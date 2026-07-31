@@ -15,7 +15,50 @@ const bot = new TelegramBot(TOKEN, { polling: true });
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+const express = require('express');
+const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
+const TelegramBot = require('node-telegram-bot-api'); // <--- 1. Kana asitti dabali
 
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// <--- 2. Telegram Bot Setup Asitti Dabali --->
+const TOKEN = process.env.BOT_TOKEN || 'BOT_TOKEN_KEESSAN_ASII_PUTHAA';
+const bot = new TelegramBot(TOKEN, { polling: true });
+
+// Command /start yeroo tuqamu deebii kennu
+bot.onText(/\/start/, (msg) => {
+  const chatId = msg.chat.id;
+  const firstName = msg.from.first_name || 'Fayyadamaa';
+
+  bot.sendMessage(
+    chatId,
+    `Baga nagaa fi gammachuun dhufte, ${firstName}!\n\nTicket bitachuuf App keenya fayyadamaa.`,
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: "🚀 App Banaa",
+              web_app: { url: "https://milki-app.onrender.com" } // URL Render keessan isa sirrii
+            }
+          ]
+        ]
+      }
+    }
+  );
+});
+// <--- Xumura Telegram Bot Setup --->
+
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Database Setup (Koodii keessan isa kanaan duraa...)
+const dbFile = path.join(__dirname, 'database.sqlite');
+const db = new sqlite3.Database(dbFile, (err) => {
+  // ...
+});
 // ==========================================
 // 2. DATABASE SETUP (SQLite)
 // ==========================================
