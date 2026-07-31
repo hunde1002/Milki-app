@@ -1,0 +1,14 @@
+{
+  "name": "lottery-telegram-mini-app",
+  "version": "1.0.0",
+  "description": "Telegram Mini App for Lottery Ticket Purchasing",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "sqlite3": "^5.1.7"
+    "node-telegram-bot-api": "^0.65.1"
+  }
+}

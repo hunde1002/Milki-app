@@ -1,0 +1,137 @@
+const express = require('express');
+const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Database Setup
+const dbFile = path.join(__dirname, 'database.sqlite');
+const db = new sqlite3.Database(dbFile, (err) => {
+    if (err) console.error('Database opening error: ', err.message);
+    else console.log('Connected to SQLite Database.');
+});
+
+// Create Tables
+db.serialize(() => {
+    db.run(`CREATE TABLE IF NOT EXISTS settings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticket_price INTEGER DEFAULT 200,
+        max_tickets INTEGER DEFAULT 50,
+        prize_1st INTEGER DEFAULT 6000,
+        prize_2nd INTEGER DEFAULT 2000,
+        end_date TEXT
+    )`);
+
+    db.run(`CREATE TABLE IF NOT EXISTS tickets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT,
+        username TEXT,
+        fullname TEXT,
+        phone TEXT,
+        ticket_numbers TEXT,
+        payment_method TEXT,
+        screenshot TEXT,
+        status TEXT DEFAULT 'Pending',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    db.run(`CREATE TABLE IF NOT EXISTS winners (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        winner_name TEXT,
+        prize_title TEXT,
+        photo_url TEXT,
+        announced_date TEXT
+    )`);
+
+    // Insert default settings if empty
+    db.get("SELECT COUNT(*) as count FROM settings", (err, row) => {
+        if (row.count === 0) {
+            const defaultDate = new Date(Date.now() + 86400000 * 3).toISOString();
+            db.run(`INSERT INTO settings (ticket_price, max_tickets, prize_1st, prize_2nd, end_date) VALUES (200, 50, 6000, 2000, ?)`, [defaultDate]);
+        }
+    });
+});
+
+// API Routes
+app.get('/api/settings', (req, res) => {
+    db.get("SELECT * FROM settings ORDER BY id DESC LIMIT 1", (err, row) => {
+        if (err) res.status(500).json({ error: err.message });
+        else res.json(row);
+    });
+});
+
+app.post('/api/settings', (req, res) => {
+    const { ticket_price, max_tickets, prize_1st, prize_2nd, end_date } = req.body;
+    db.run(`UPDATE settings SET ticket_price = ?, max_tickets = ?, prize_1st = ?, prize_2nd = ?, end_date = ? WHERE id = 1`,
+        [ticket_price, max_tickets, prize_1st, prize_2nd, end_date], function(err) {
+            if (err) res.status(500).json({ error: err.message });
+            else res.json({ success: true });
+        });
+});
+
+app.get('/api/tickets', (req, res) => {
+    db.all("SELECT * FROM tickets ORDER BY id DESC", (err, rows) => {
+        if (err) res.status(500).json({ error: err.message });
+        else res.json(rows);
+    });
+});
+
+app.post('/api/tickets', (req, res) => {
+    const { user_id, username, fullname, phone, ticket_numbers, payment_method, screenshot } = req.body;
+    db.run(`INSERT INTO tickets (user_id, username, fullname, phone, ticket_numbers, payment_method, screenshot) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [user_id, username, fullname, phone, ticket_numbers, payment_method, screenshot], function(err) {
+            if (err) res.status(500).json({ error: err.message });
+            else res.json({ success: true, ticketId: this.lastID });
+        });
+});
+
+app.post('/api/tickets/status', (req, res) => {
+    const { id, status } = req.body;
+    db.run(`UPDATE tickets SET status = ? WHERE id = ?`, [status, id], function(err) {
+        if (err) res.status(500).json({ error: err.message });
+        else res.json({ success: true });
+    });
+});
+
+app.get('/api/winners', (req, res) => {
+    db.all("SELECT * FROM winners ORDER BY id DESC", (err, rows) => {
+        if (err) res.status(500).json({ error: err.message });
+        else res.json(rows);
+    });
+});
+
+app.post('/api/winners', (req, res) => {
+    const { winner_name, prize_title, photo_url } = req.body;
+    db.run(`INSERT INTO winners (winner_name, prize_title, photo_url, announced_date) VALUES (?, ?, ?, datetime('now'))`,
+        [winner_name, prize_title, photo_url], function(err) {
+            if (err) res.status(500).json({ error: err.message });
+            else res.json({ success: true });
+        });
+});
+
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+});
+
+<!-- Admin Dashboard Content keessatti iddoo kana dabali -->
+<div id="admin-dashboard-content" style="display:none;">
+    <h3>Manage Settings & Prizes</h3>
+    <div class="form-group"><label>Ticket Price</label><input type="number" id="adm-price"></div>
+    <div class="form-group"><label>1st Prize</label><input type="number" id="adm-p1"></div>
+    <div class="form-group"><label>2nd Prize</label><input type="number" id="adm-p2"></div>
+    <button class="primary-btn" onclick="saveAdminSettings()">Save Settings</button>
+    
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+        <h3>User Submissions & Approvals</h3>
+        <!-- Excel Export Button -->
+        <button class="primary-btn" style="width: auto; padding: 8px 14px; background: #22c55e;" onclick="exportToExcel()">
+            <i class="fa-solid fa-file-excel"></i> Export to Excel
+        </button>
+    </div>
+    
+    <div id="admin-tickets-table" style="margin-top: 10px;"></div>
+</div>
