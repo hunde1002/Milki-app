@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 3000;
 // 1. TELEGRAM BOT CONFIGURATION
 // ==========================================
 // Token Bot kee BotFather irraa argatte asitti galchi
-const TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN_HERE';
+const TOKEN = process.env.BOT_TOKEN;
 const bot = new TelegramBot(TOKEN, { polling: true });
 
 app.use(express.json());
@@ -82,7 +82,7 @@ Carraa gaarii! Tikitii murachuuf liinkii armaan gadii tuqaa:
     `;
 
     // Yoo Localhost irra jirtu linkii Ngrok, yoo online host goote URL server kee asitti galchi
-    const webAppUrl = 'https://your-domain.com'; 
+    const webAppUrl = 'https://milki-app.onrender.com'; 
 
     bot.sendMessage(chatId, welcomeMessage, {
         reply_markup: {
