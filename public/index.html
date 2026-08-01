@@ -6,158 +6,376 @@
     <title>Hunde Lottery System</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
-        body { background-color: #f8fafc; color: #1e293b; padding: 15px; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 15px; }
-        h2 { font-size: 1.2rem; color: #4f46e5; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --bg-glass: rgba(255, 255, 255, 0.75);
+            --border-glass: rgba(255, 255, 255, 0.3);
+            --text-dark: #0f172a;
+            --success: #22c55e;
+            --warning: #eab308;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, sans-serif; }
         
-        /* Grid 1-50 Tiketti Filachuuf */
-        .grid-tickets { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 10px; }
-        .t-btn { padding: 12px 5px; text-align: center; border: 1px solid #cbd5e1; border-radius: 8px; font-weight: bold; background: #fff; cursor: pointer; transition: 0.2s; }
-        .t-btn.selected { background: #4f46e5; color: white; border-color: #4f46e5; }
-        .t-btn.taken { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; text-decoration: line-through; }
+        body { 
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            color: var(--text-dark);
+            min-height: 100vh;
+            padding-bottom: 70px;
+        }
 
-        .form-group { margin-top: 12px; }
+        /* Glassmorphism Design Layout */
+        .glass-card {
+            background: var(--bg-glass);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-glass);
+            border-radius: 16px;
+            padding: 20px;
+            margin: 15px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+        }
+
+        /* Header Banner & Admin Tag */
+        .admin-banner {
+            background: linear-gradient(90deg, #4f46e5, #9333ea);
+            color: white;
+            padding: 12px;
+            text-align: center;
+            font-weight: bold;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* Countdown & Progress Bar */
+        .countdown-box { display: flex; justify-content: space-around; text-align: center; margin: 10px 0; }
+        .time-card { background: rgba(0,0,0,0.1); padding: 8px; border-radius: 8px; min-width: 55px; }
+        .time-card h3 { color: var(--primary-dark); font-size: 1.2rem; }
+        .progress-bar-bg { background: #e2e8f0; height: 12px; border-radius: 6px; overflow: hidden; margin-top: 8px; }
+        .progress-fill { background: linear-gradient(90deg, #22c55e, #eab308); height: 100%; width: 0%; transition: 0.5s; }
+
+        /* Grid Tickets (1-50 Multi Select) */
+        .ticket-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 15px; }
+        .t-btn { 
+            padding: 12px 5px; text-align: center; border-radius: 10px; font-weight: bold; 
+            background: white; border: 1px solid #cbd5e1; cursor: pointer; transition: 0.2s; 
+        }
+        .t-btn.selected { background: var(--primary); color: white; border-color: var(--primary); transform: scale(1.05); }
+        .t-btn.taken { background: #cbd5e1; color: #64748b; cursor: not-allowed; text-decoration: line-through; }
+
+        /* Payment Section & Copy Icon */
+        .copy-box {
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(255,255,255,0.9); padding: 10px; border-radius: 8px;
+            border: 1px dashed var(--primary); margin-top: 8px; font-weight: bold;
+        }
+        .copy-btn { color: var(--primary); cursor: pointer; padding: 4px 8px; }
+
+        /* Navigation Bottom Bar */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            display: flex; justify-content: space-around; padding: 10px 0;
+            border-top: 1px solid rgba(255,255,255,0.1); z-index: 100;
+        }
+        .nav-item { color: #94a3b8; text-align: center; font-size: 0.75rem; cursor: pointer; border: none; background: none; }
+        .nav-item.active { color: #818cf8; font-weight: bold; }
+        .nav-item i { font-size: 1.2rem; display: block; margin-bottom: 2px; }
+
+        /* Hide Sections */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* Inputs & Buttons */
+        .form-group { margin-bottom: 12px; }
         .form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; }
-        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; }
-
-        .btn-submit { width: 100%; background: #22c55e; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; font-size: 1rem; margin-top: 15px; cursor: pointer; }
-        #statusMsg { margin-top: 10px; text-align: center; font-weight: bold; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; }
+        .btn-submit { width: 100%; padding: 12px; background: var(--success); color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h2><i class="fa-solid fa-ticket"></i> Lakkoofsa Tiketti Filadhu (1-50)</h2>
-        <p style="font-size:0.8rem; color:#64748b;">Lakkoofsa fedhte tuquun filadhu:</p>
-        <div class="grid-tickets" id="ticketGrid">
-            </div>
+    <div style="padding: 15px 15px 0 15px;">
+        <div class="admin-banner">
+            <span><i class="fa-solid fa-user-shield"></i> Admin: <span id="adminName">Hunde Tesfaye Jule</span></span>
+            <select id="langSelect" onchange="switchLanguage(this.value)" style="padding: 4px; border-radius: 6px; font-weight: bold;">
+                <option value="om">Afaan Oromoo</option>
+                <option value="en">English</option>
+                <option value="am">አማርኛ</option>
+            </select>
+        </div>
     </div>
 
-    <div class="card">
-        <h2><i class="fa-solid fa-user-pen"></i> Odeeffannoo Keeti Galchi</h2>
-        <form id="buyForm">
-            <div class="form-group">
-                <label>Maqaa Guutuu:</label>
-                <input type="text" id="fullname" placeholder="Maqaa kee galchi" required>
-            </div>
-            <div class="form-group">
-                <label>Lakkoofsa Bilbilaa:</label>
-                <input type="tel" id="phone" placeholder="0911..." required>
-            </div>
-            <div class="form-group">
-                <label>Karaa Kaffaltii (Payment Method):</label>
-                <select id="payment_method">
-                    <option value="CBE Birr / CBE Account">CBE / CBE Birr</option>
-                    <option value="Telebirr">Telebirr</option>
-                    <option value="Bank of Abyssinia">Bank of Abyssinia</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Screenshot Kaffaltii (URL/Link):</label>
-                <input type="text" id="screenshot" placeholder="Linkii screenshot galchi" required>
+    <div id="homeTab" class="tab-content active">
+        <div class="glass-card">
+            <h2><i class="fa-solid fa-trophy" style="color: #eab308;"></i> Hunde Active Lottery</h2>
+            <p style="font-size: 0.85rem; color: #475569; margin-top: 4px;">Carran 1ffaa: <b>6000 ETB</b> | Carran 2ffaa: <b>2000 ETB</b></p>
+            
+            <div class="countdown-box">
+                <div class="time-card"><h3 id="cdDays">00</h3><small>Days</small></div>
+                <div class="time-card"><h3 id="cdHours">00</h3><small>Hours</small></div>
+                <div class="time-card"><h3 id="cdMin">00</h3><small>Min</small></div>
+                <div class="time-card"><h3 id="cdSec">00</h3><small>Sec</small></div>
             </div>
 
-            <button type="submit" class="btn-submit"><i class="fa-solid fa-paper-plane"></i> Tiketti Bitadhu</button>
-        </form>
-        <p id="statusMsg"></p>
+            <div style="margin-top: 15px;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: bold;">
+                    <span>Tikettii Hafe: <span id="ticketsLeftCount">50</span> / 50</span>
+                    <span id="percentText">0%</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div class="progress-fill" id="progressBar"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-card">
+            <h3><i class="fa-solid fa-grip"></i> Quick Multi-Ticket Selection (1-50)</h3>
+            <p style="font-size: 0.8rem; color: #64748b;">Lakkoofsa fedhte tuquun waliini filadhu:</p>
+            <div class="ticket-grid" id="ticketGrid"></div>
+        </div>
+
+        <div class="glass-card">
+            <h3><i class="fa-solid fa-credit-card"></i> Kaffaltii & Galmee</h3>
+            <form id="purchaseForm">
+                <div class="form-group">
+                    <label>Maqaa Guutuu:</label>
+                    <input type="text" id="fullname" placeholder="Maqaa kee galchi" required>
+                </div>
+                <div class="form-group">
+                    <label>Lakkoofsa Bilbilaa:</label>
+                    <input type="tel" id="phone" placeholder="0911..." required>
+                </div>
+
+                <div class="form-group">
+                    <label>Bank Account (CBE):</label>
+                    <div class="copy-box">
+                        <span>CBE: <b>1000512022433</b></span>
+                        <i class="fa-solid fa-copy copy-btn" onclick="copyToClipboard('1000512022433')"></i>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Telebirr Account:</label>
+                    <div class="copy-box">
+                        <span>Telebirr: <b>0910020814</b></span>
+                        <i class="fa-solid fa-copy copy-btn" onclick="copyToClipboard('0910020814')"></i>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Screenshot Kaffaltii (URL/Link):</label>
+                    <input type="text" id="screenshot" placeholder="Linkii screenshot upload gote galchi" required>
+                </div>
+
+                <button type="submit" class="btn-submit"><i class="fa-solid fa-paper-plane"></i> Tiketti Bitadhu</button>
+            </form>
+            <p id="msg" style="text-align: center; margin-top: 10px; font-weight: bold;"></p>
+        </div>
+    </div>
+
+    <div id="myTicketsTab" class="tab-content">
+        <div class="glass-card">
+            <h2><i class="fa-solid fa-ticket"></i> Tikettiiwwan Ko</h2>
+            <div id="myTicketsList" style="margin-top: 15px;">
+                <p>Tikettiin kutattan asirratti mul'ata...</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="winnersTab" class="tab-content">
+        <div class="glass-card">
+            <h2><i class="fa-solid fa-award" style="color:#eab308;"></i> Mo'attoota (Winners History)</h2>
+            <div id="winnersList" style="margin-top: 15px;">
+                </div>
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <button class="nav-item active" onclick="switchTab('homeTab', this)">
+            <i class="fa-solid fa-house"></i> Home
+        </button>
+        <button class="nav-item" onclick="switchTab('myTicketsTab', this)">
+            <i class="fa-solid fa-ticket"></i> My Tickets
+        </button>
+        <button class="nav-item" onclick="switchTab('winnersTab', this)">
+            <i class="fa-solid fa-trophy"></i> Winners
+        </button>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
-        tg.expand(); // Mini App skriinii guutuu akka ta'uuf
+        tg.expand();
 
         let selectedTickets = [];
-        let userId = tg.initDataUnsafe?.user?.id || "UnknownUser";
-        let username = tg.initDataUnsafe?.user?.username || "Guest";
+        let allTickets = [];
 
-        // 1. Grid Tiketti 1-50 Generaate Gochuu
-        async function initTickets() {
+        // Tab Switcher
+        function switchTab(tabId, btn) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            btn.classList.add('active');
+        }
+
+        // Copy Clipboard Function
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text);
+            alert("Lakkoofsi kaffaltii " + text + " copy ta'eera!");
+        }
+
+        // Language Dictionary
+        const translations = {
+            om: { welcome: "Baga dhuftan", home: "Home", my_tickets: "Tikettii Ko", winners: "Mo'attoota" },
+            en: { welcome: "Welcome", home: "Home", my_tickets: "My Tickets", winners: "Winners" },
+            am: { welcome: "እንኳን ደህና መጡ", home: "መነሻ", my_tickets: "የኔ ቲኬቶች", winners: "አሸናፊዎች" }
+        };
+
+        function switchLanguage(lang) {
+            console.log("Language switched to: " + lang);
+        }
+
+        // Load Initial Data
+        async function loadAppData() {
+            try {
+                const res = await fetch('/api/tickets');
+                allTickets = await res.json();
+
+                renderGrid();
+                renderProgress();
+                renderWinners();
+            } catch (err) { console.error(err); }
+        }
+
+        // Render 1-50 Multi Select Grid
+        function renderGrid() {
             const grid = document.getElementById('ticketGrid');
             grid.innerHTML = '';
 
-            // Server irraa ticket-oota bitaman fetch gochuu
-            let takenTickets = [];
-            try {
-                const res = await fetch('/api/tickets');
-                const tickets = await res.json();
-                tickets.forEach(t => {
-                    if (t.ticket_numbers) {
-                        const nums = t.ticket_numbers.split(',').map(n => parseInt(n.trim()));
-                        takenTickets.push(...nums);
-                    }
-                });
-            } catch (e) { console.error(e); }
+            let taken = [];
+            allTickets.forEach(t => {
+                if (t.ticket_numbers) {
+                    const nums = t.ticket_numbers.split(',').map(n => parseInt(n.trim()));
+                    taken.push(...nums);
+                }
+            });
 
             for (let i = 1; i <= 50; i++) {
-                const isTaken = takenTickets.includes(i);
+                const isTaken = taken.includes(i);
                 const btn = document.createElement('div');
                 btn.className = `t-btn ${isTaken ? 'taken' : ''}`;
                 btn.textContent = i;
 
                 if (!isTaken) {
-                    btn.onclick = () => toggleSelect(i, btn);
+                    btn.onclick = () => {
+                        if (selectedTickets.includes(i)) {
+                            selectedTickets = selectedTickets.filter(n => n !== i);
+                            btn.classList.remove('selected');
+                        } else {
+                            selectedTickets.push(i);
+                            btn.classList.add('selected');
+                        }
+                    };
                 }
                 grid.appendChild(btn);
             }
         }
 
-        // Tiketti Filachuu / Dhiisuu
-        function toggleSelect(num, el) {
-            if (selectedTickets.includes(num)) {
-                selectedTickets = selectedTickets.filter(n => n !== num);
-                el.classList.remove('selected');
-            } else {
-                selectedTickets.push(num);
-                el.classList.add('selected');
-            }
+        // Render Progress Bar & Tracker
+        function renderProgress() {
+            let totalTaken = 0;
+            allTickets.forEach(t => {
+                if (t.ticket_numbers) totalTaken += t.ticket_numbers.split(',').length;
+            });
+
+            const left = Math.max(0, 50 - totalTaken);
+            const percent = Math.min(100, Math.round((totalTaken / 50) * 100));
+
+            document.getElementById('ticketsLeftCount').textContent = left;
+            document.getElementById('percentText').textContent = percent + '%';
+            document.getElementById('progressBar').style.width = percent + '%';
         }
 
-        // Form Submit (Data Server-atti Erguu)
-        document.getElementById('buyForm').addEventListener('submit', async (e) => {
+        // Render Winners
+        async function renderWinners() {
+            const res = await fetch('/api/winners');
+            const winners = await res.json();
+            const container = document.getElementById('winnersList');
+            container.innerHTML = '';
+
+            winners.forEach(w => {
+                container.innerHTML += `
+                    <div style="background:white; padding:10px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between;">
+                        <div><b>${w.name}</b> (Ticket #${w.ticket})</div>
+                        <div style="color:var(--success); font-weight:bold;">${w.prize}</div>
+                    </div>
+                `;
+            });
+        }
+
+        // Form Submit Handler
+        document.getElementById('purchaseForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const msg = document.getElementById('statusMsg');
+            const msg = document.getElementById('msg');
 
             if (selectedTickets.length === 0) {
                 msg.style.color = 'red';
-                msg.textContent = "Moo: Maaloo jalqaba lakkoofsa tiketti filadhu!";
+                msg.textContent = "Maaloo lakkoofsa tiketti filadhaa!";
                 return;
             }
 
-            msg.style.color = '#4f46e5';
-            msg.textContent = "Ergamaa jira...";
+            msg.style.color = 'blue';
+            msg.textContent = "Processing...";
 
             const payload = {
-                user_id: userId,
-                username: username,
+                user_id: tg.initDataUnsafe?.user?.id || 'guest',
+                username: tg.initDataUnsafe?.user?.username || 'Guest',
                 fullname: document.getElementById('fullname').value,
                 phone: document.getElementById('phone').value,
                 ticket_numbers: selectedTickets.join(','),
-                payment_method: document.getElementById('payment_method').value,
+                payment_method: 'CBE / Telebirr',
                 screenshot: document.getElementById('screenshot').value
             };
 
-            try {
-                const res = await fetch('/api/tickets', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                const result = await res.json();
+            const res = await fetch('/api/tickets', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
 
-                if (result.success) {
-                    msg.style.color = 'green';
-                    msg.textContent = "Tikettiin kee galmaa'eera! Approval Admin eegaa jira.";
-                    setTimeout(() => tg.close(), 2000); // Telegram App suni cufama
-                }
-            } catch (err) {
-                msg.style.color = 'red';
-                msg.textContent = "Error: Galmeessuu hin danda'amne!";
+            if (data.success) {
+                msg.style.color = 'green';
+                msg.textContent = "Galmee milkaa'ee! Admin Approve eegaa jira.";
+                loadAppData();
             }
         });
 
-        initTickets();
+        // Countdown Timer Logic
+        function startCountdown() {
+            const target = new Date().getTime() + (86400000 * 2); // 2 days left
+            setInterval(() => {
+                const now = new Date().getTime();
+                const diff = target - now;
+
+                if (diff > 0) {
+                    document.getElementById('cdDays').textContent = Math.floor(diff / (1000 * 60 * 60 * 24));
+                    document.getElementById('cdHours').textContent = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    document.getElementById('cdMin').textContent = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    document.getElementById('cdSec').textContent = Math.floor((diff % (1000 * 60)) / 1000);
+                }
+            }, 1000);
+        }
+
+        loadAppData();
+        startCountdown();
     </script>
 </body>
 </html>
