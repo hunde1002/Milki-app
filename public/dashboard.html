@@ -3,151 +3,426 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard</title>
+    <title>Admin Dashboard - Lottery System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f4f9; margin: 0; padding: 20px; }
-        .container { max-width: 1000px; margin: 0 auto; }
-        h1 { text-align: center; color: #333; }
-        .section { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 25px; }
-        h2 { border-bottom: 2px solid #007bff; padding-bottom: 8px; color: #007bff; }
+        :root {
+            --primary: #4f46e5;
+            --bg-dark: #0f172a;
+            --bg-light: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --success: #16a34a;
+            --warning: #ca8a04;
+            --danger: #dc2626;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { display: flex; min-height: 100vh; background-color: var(--bg-light); color: var(--text-main); }
+
+        /* Sidebar Navigation */
+        .sidebar { width: 260px; background-color: var(--bg-dark); color: white; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+        .sidebar h2 { font-size: 1.2rem; text-align: center; color: #818cf8; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .nav-btn { background: none; border: none; color: #94a3b8; padding: 12px 15px; text-align: left; font-size: 0.95rem; cursor: pointer; border-radius: 8px; transition: 0.3s; display: flex; align-items: center; gap: 12px; }
+        .nav-btn:hover, .nav-btn.active { background-color: var(--primary); color: white; }
+
+        /* Main Content Area */
+        .main-content { flex: 1; padding: 30px; overflow-y: auto; }
+        .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .lang-select { padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; outline: none; cursor: pointer; font-weight: bold; }
+
+        /* Stats Cards */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .stat-card { background: white; padding: 18px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: space-between; }
+        .stat-card i { font-size: 2rem; color: var(--primary); }
+
+        /* Pages (Sections) */
+        .page { display: none; }
+        .page.active { display: block; }
+        .card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; }
+
+        /* Tables & Custom Grid */
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        table, th, td { border: 1px solid #ddd; }
-        th, td { padding: 10px; text-align: left; }
-        th { background-color: #007bff; color: white; }
-        .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .btn-approve { background-color: #28a745; color: white; }
-        .btn-reject { background-color: #dc3545; color: white; }
-        .form-group { margin-bottom: 12px; }
-        .form-group label { display: block; font-weight: bold; margin-bottom: 4px; }
-        .form-group input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
-        .btn-submit { background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        th { background-color: #f1f5f9; color: #475569; }
+
+        /* Ticket Grid (1 to 50 Visualizer) */
+        .ticket-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 8px; margin-top: 15px; }
+        .ticket-box { padding: 12px 5px; text-align: center; font-weight: bold; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem; }
+        .ticket-free { background-color: #f8fafc; color: #64748b; }
+        .ticket-pending { background-color: #fef08a; color: var(--warning); border-color: #fde047; } /* Keelloo (Pending) */
+        .ticket-approved { background-color: #bbf7d0; color: var(--success); border-color: #86efac; } /* Magariisa (Approved) */
+
+        /* Buttons & Badges */
+        .btn { padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; display: inline-flex; align-items: center; gap: 5px; }
+        .btn-success { background-color: var(--success); color: white; }
+        .btn-danger { background-color: var(--danger); color: white; }
+        .btn-primary { background-color: var(--primary); color: white; }
+        .badge { padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; }
+        .badge-pending { background-color: #fef08a; color: #854d0e; }
+        .badge-approved { background-color: #bbf7d0; color: #166534; }
+
+        /* Form Controls */
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; }
+        .form-group input { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; }
+
+        /* Modal for Screenshot */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: white; padding: 20px; border-radius: 10px; max-width: 500px; width: 90%; text-align: center; position: relative; }
+        .modal-content img { max-width: 100%; height: auto; border-radius: 8px; margin-top: 10px; }
+        .close-modal { position: absolute; top: 10px; right: 15px; font-size: 1.5rem; cursor: pointer; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h1>🎟️ Admin Dashboard</h1>
-
-    <div class="section">
-        <h2>1. Settings Jijjiiruu</h2>
-        <form id="settingsForm">
-            <div class="form-group">
-                <label>Gatii Tiketti (ETB):</label>
-                <input type="number" id="ticket_price" required>
-            </div>
-            <div class="form-group">
-                <label>Max Tickets:</label>
-                <input type="number" id="max_tickets" required>
-            </div>
-            <div class="form-group">
-                <label>Badhaasa 1ffaa (ETB):</label>
-                <input type="number" id="prize_1st" required>
-            </div>
-            <div class="form-group">
-                <label>Badhaasa 2ffaa (ETB):</label>
-                <input type="number" id="prize_2nd" required>
-            </div>
-            <button type="submit" class="btn-submit">Settings Save Godhi</button>
-        </form>
+    <div class="sidebar">
+        <h2><i class="fa-solid fa-ticket-simple"></i> Admin Panel</h2>
+        <button class="nav-btn active" onclick="showPage('ticketsPage', this)">
+            <i class="fa-solid fa-list-check"></i> <span class="lang-text" data-om="Tickets Approvals" data-en="Tickets Approvals" data-am="ቲኬቶች">Tickets Approvals</span>
+        </button>
+        <button class="nav-btn" onclick="showPage('visualizerPage', this)">
+            <i class="fa-solid fa-grip"></i> <span class="lang-text" data-om="Visualizer (1-50)" data-en="Visualizer (1-50)" data-am="ዕይታ (1-50)">Visualizer (1-50)</span>
+        </button>
+        <button class="nav-btn" onclick="showPage('paymentsPage', this)">
+            <i class="fa-solid fa-money-bill-wave"></i> <span class="lang-text" data-om="Kaffaltii (Payments)" data-en="Payments List" data-am="ክፍያዎች">Kaffaltii (Payments)</span>
+        </button>
+        <button class="nav-btn" onclick="showPage('screenshotsPage', this)">
+            <i class="fa-solid fa-image"></i> <span class="lang-text" data-om="Screenshots Galmee" data-en="Screenshots" data-am="ስክሪንሾቶች">Screenshots Galmee</span>
+        </button>
+        <button class="nav-btn" onclick="showPage('settingsPage', this)">
+            <i class="fa-solid fa-gear"></i> <span class="lang-text" data-om="Settings Systems" data-en="Settings" data-am="ማስተካከያ">Settings Systems</span>
+        </button>
     </div>
 
-    <div class="section">
-        <h2>2. Tikettiiwwan Tarree (Approvals)</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Maqaa</th>
-                    <th>Lakkoofsa Bilbilaa</th>
-                    <th>Lakkoofsa Tiketti</th>
-                    <th>Status</th>
-                    <th>Tarkaanfii (Action)</th>
-                </tr>
-            </thead>
-            <tbody id="ticketsTable">
-                </tbody>
-        </table>
+    <div class="main-content">
+        
+        <div class="header-bar">
+            <h1><i class="fa-solid fa-user-shield"></i> <span id="pageTitle">Admin Dashboard</span></h1>
+            <div>
+                <i class="fa-solid fa-globe"></i>
+                <select class="lang-select" onchange="changeLanguage(this.value)">
+                    <option value="om">Afaan Oromoo</option>
+                    <option value="en">English</option>
+                    <option value="am">አማርኛ</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div>
+                    <p style="color: #64748b; font-size: 0.85rem;">Waligala Akkaataa</p>
+                    <h3 id="statTotalRevenue">0 ETB</h3>
+                </div>
+                <i class="fa-solid fa-wallet" style="color: #22c55e;"></i>
+            </div>
+            <div class="stat-card">
+                <div>
+                    <p style="color: #64748b; font-size: 0.85rem;">Tickets Approved</p>
+                    <h3 id="statApprovedTickets">0</h3>
+                </div>
+                <i class="fa-solid fa-circle-check" style="color: #3b82f6;"></i>
+            </div>
+            <div class="stat-card">
+                <div>
+                    <p style="color: #64748b; font-size: 0.85rem;">Pending Approvals</p>
+                    <h3 id="statPendingTickets">0</h3>
+                </div>
+                <i class="fa-solid fa-clock" style="color: #eab308;"></i>
+            </div>
+        </div>
+
+        <div id="ticketsPage" class="page active">
+            <div class="card">
+                <h2><i class="fa-solid fa-ticket"></i> Listii Tikettiiwwan User-oonnaa</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>User</th>
+                            <th>Phone</th>
+                            <th>Tickets</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ticketsTableBody">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="visualizerPage" class="page">
+            <div class="card">
+                <h2><i class="fa-solid fa-palette"></i> Haala Lakkoofsa Tiketti (1 - 50)</h2>
+                <div style="margin-top: 10px; display: flex; gap: 15px;">
+                    <span style="display:flex; align-items:center; gap:5px;"><div style="width:15px; height:15px; background:#fef08a; border:1px solid #fde047; border-radius:3px;"></div> Keelloo = Filatamee (Eegamaa)</span>
+                    <span style="display:flex; align-items:center; gap:5px;"><div style="width:15px; height:15px; background:#bbf7d0; border:1px solid #86efac; border-radius:3px;"></div> Magariisa = Mirkanaa'ee (Approved)</span>
+                    <span style="display:flex; align-items:center; gap:5px;"><div style="width:15px; height:15px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:3px;"></div> Adii = Qullaa (Free)</span>
+                </div>
+                <div class="ticket-grid" id="ticketVisualizerGrid">
+                    </div>
+            </div>
+        </div>
+
+        <div id="paymentsPage" class="page">
+            <div class="card">
+                <h2><i class="fa-solid fa-file-invoice-dollar"></i> Listii Kaffaltii User-oonnaa</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Maqaa User</th>
+                            <th>Karaa Kaffaltii</th>
+                            <th>Gatii (Birr)</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="paymentsTableBody">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="screenshotsPage" class="page">
+            <div class="card">
+                <h2><i class="fa-solid fa-images"></i> Screenshots Kaffaltii Ergaman</h2>
+                <div id="screenshotGallery" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; margin-top: 15px;">
+                    </div>
+            </div>
+        </div>
+
+        <div id="settingsPage" class="page">
+            <div class="card">
+                <h2><i class="fa-solid fa-sliders"></i> System Settings Jijjiiri</h2>
+                <form id="settingsForm">
+                    <div class="form-group">
+                        <label>Gatii Tiketti (ETB):</label>
+                        <input type="number" id="ticket_price" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Max Tickets (Default 50):</label>
+                        <input type="number" id="max_tickets" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Badhaasa 1ffaa (ETB):</label>
+                        <input type="number" id="prize_1st" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Badhaasa 2ffaa (ETB):</label>
+                        <input type="number" id="prize_2nd" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save Settings</button>
+                </form>
+            </div>
+        </div>
+
     </div>
-</div>
 
-<script>
-    // 1. Settings Load Godhuu
-    async function loadSettings() {
-        const res = await fetch('/api/settings');
-        const data = await res.json();
-        if (data) {
-            document.getElementById('ticket_price').value = data.ticket_price || 200;
-            document.getElementById('max_tickets').value = data.max_tickets || 50;
-            document.getElementById('prize_1st').value = data.prize_1st || 6000;
-            document.getElementById('prize_2nd').value = data.prize_2nd || 2000;
+    <div id="imageModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal()">&times;</span>
+            <h3 style="margin-bottom:10px;">Screenshot Kaffaltii</h3>
+            <img id="modalImage" src="" alt="Payment Screenshot">
+        </div>
+    </div>
+
+    <script>
+        let globalTickets = [];
+
+        // 1. Navigation Between Pages
+        function showPage(pageId, btnElement) {
+            document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+            
+            document.getElementById(pageId).classList.add('active');
+            btnElement.classList.add('active');
         }
-    }
 
-    // 2. Settings Save Godhuu
-    document.getElementById('settingsForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const settingsData = {
-            ticket_price: document.getElementById('ticket_price').value,
-            max_tickets: document.getElementById('max_tickets').value,
-            prize_1st: document.getElementById('prize_1st').value,
-            prize_2nd: document.getElementById('prize_2nd').value,
-            end_date: new Date(Date.now() + 86400000 * 3).toISOString()
-        };
-
-        const res = await fetch('/api/settings', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(settingsData)
-        });
-        const result = await res.json();
-        if (result.success) alert("Settings sirriitti fooyya'eera!");
-    });
-
-    // 3. Tickets Fetch Godhuu & Table-tti Galchuu
-    async function loadTickets() {
-        const res = await fetch('/api/tickets');
-        const tickets = await res.json();
-        const tableBody = document.getElementById('ticketsTable');
-        tableBody.innerHTML = '';
-
-        tickets.forEach(ticket => {
-            const row = `
-                <tr>
-                    <td>${ticket.id}</td>
-                    <td>${ticket.fullname || ticket.username}</td>
-                    <td>${ticket.phone}</td>
-                    <td>${ticket.ticket_numbers}</td>
-                    <td><b>${ticket.status}</b></td>
-                    <td>
-                        ${ticket.status === 'Pending' ? `
-                            <button class="btn btn-approve" onclick="updateStatus(${ticket.id}, 'Approved')">Approve</button>
-                            <button class="btn btn-reject" onclick="updateStatus(${ticket.id}, 'Rejected')">Reject</button>
-                        ` : 'Xumurameera'}
-                    </td>
-                </tr>
-            `;
-            tableBody.innerHTML += row;
-        });
-    }
-
-    // 4. Ticket Approve/Reject Godhuu
-    async function updateStatus(id, status) {
-        const res = await fetch('/api/tickets/status', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id, status })
-        });
-        const result = await res.json();
-        if (result.success) {
-            alert(`Ticket #${id} status status Gara ${status}-tti jijjiirameera!`);
-            loadTickets();
+        // 2. Multi-language Translator
+        function changeLanguage(lang) {
+            document.querySelectorAll('.lang-text').forEach(el => {
+                if (el.dataset[lang]) {
+                    el.textContent = el.dataset[lang];
+                }
+            });
         }
-    }
 
-    // Page yeroo banamu
-    loadSettings();
-    loadTickets();
-</script>
+        // 3. Load Data From Server
+        async function loadDashboardData() {
+            try {
+                // Fetch Tickets
+                const resTickets = await fetch('/api/tickets');
+                globalTickets = await resTickets.json();
 
+                renderTickets();
+                renderVisualizer();
+                renderPayments();
+                renderScreenshots();
+                calculateStats();
+
+                // Fetch Settings
+                const resSettings = await fetch('/api/settings');
+                const settings = await resSettings.json();
+                if (settings) {
+                    document.getElementById('ticket_price').value = settings.ticket_price || 200;
+                    document.getElementById('max_tickets').value = settings.max_tickets || 50;
+                    document.getElementById('prize_1st').value = settings.prize_1st || 6000;
+                    document.getElementById('prize_2nd').value = settings.prize_2nd || 2000;
+                }
+            } catch (err) {
+                console.error("Data load error:", err);
+            }
+        }
+
+        // Render Table Tickets
+        function renderTickets() {
+            const tbody = document.getElementById('ticketsTableBody');
+            tbody.innerHTML = '';
+            globalTickets.forEach(t => {
+                const badgeClass = t.status === 'Approved' ? 'badge-approved' : 'badge-pending';
+                tbody.innerHTML += `
+                    <tr>
+                        <td>#${t.id}</td>
+                        <td>${t.fullname || t.username}</td>
+                        <td>${t.phone}</td>
+                        <td><b>${t.ticket_numbers}</b></td>
+                        <td><span class="badge ${badgeClass}">${t.status}</span></td>
+                        <td>
+                            ${t.status === 'Pending' ? `
+                                <button class="btn btn-success" onclick="updateStatus(${t.id}, 'Approved')"><i class="fa-solid fa-check"></i></button>
+                                <button class="btn btn-danger" onclick="updateStatus(${t.id}, 'Rejected')"><i class="fa-solid fa-xmark"></i></button>
+                            ` : '<i class="fa-solid fa-lock" style="color:#94a3b8;"></i>'}
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        // Render Visualizer 1 - 50 (Keelloo & Magariisa)
+        function renderVisualizer() {
+            const grid = document.getElementById('ticketVisualizerGrid');
+            grid.innerHTML = '';
+
+            let ticketMap = {};
+            globalTickets.forEach(t => {
+                if (t.ticket_numbers) {
+                    const nums = t.ticket_numbers.split(',').map(n => n.trim());
+                    nums.forEach(n => {
+                        ticketMap[n] = t.status;
+                    });
+                }
+            });
+
+            for (let i = 1; i <= 50; i++) {
+                let statusClass = 'ticket-free';
+                if (ticketMap[i] === 'Pending') statusClass = 'ticket-pending'; // Keelloo
+                else if (ticketMap[i] === 'Approved') statusClass = 'ticket-approved'; // Magariisa
+
+                grid.innerHTML += `<div class="ticket-box ${statusClass}">${i}</div>`;
+            }
+        }
+
+        // Render Payments
+        function renderPayments() {
+            const tbody = document.getElementById('paymentsTableBody');
+            tbody.innerHTML = '';
+            const price = document.getElementById('ticket_price').value || 200;
+
+            globalTickets.forEach(t => {
+                const count = t.ticket_numbers ? t.ticket_numbers.split(',').length : 1;
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${t.fullname || t.username}</td>
+                        <td>${t.payment_method || 'CBE / Telebirr'}</td>
+                        <td><b>${count * price} ETB</b></td>
+                        <td><span class="badge ${t.status === 'Approved' ? 'badge-approved' : 'badge-pending'}">${t.status}</span></td>
+                    </tr>
+                `;
+            });
+        }
+
+        // Render Screenshot Gallery
+        function renderScreenshots() {
+            const gallery = document.getElementById('screenshotGallery');
+            gallery.innerHTML = '';
+
+            globalTickets.forEach(t => {
+                if (t.screenshot) {
+                    gallery.innerHTML += `
+                        <div style="background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0; text-align:center;">
+                            <img src="${t.screenshot}" style="width:100%; height:120px; object-fit:cover; border-radius:6px; cursor:pointer;" onclick="openModal('${t.screenshot}')">
+                            <p style="font-size:0.8rem; margin-top:5px; font-weight:bold;">${t.fullname || 'User'}</p>
+                        </div>
+                    `;
+                }
+            });
+        }
+
+        // Calculate Stats
+        function calculateStats() {
+            const approved = globalTickets.filter(t => t.status === 'Approved');
+            const pending = globalTickets.filter(t => t.status === 'Pending');
+            const price = document.getElementById('ticket_price').value || 200;
+
+            let totalRev = 0;
+            approved.forEach(t => {
+                const count = t.ticket_numbers ? t.ticket_numbers.split(',').length : 1;
+                totalRev += (count * price);
+            });
+
+            document.getElementById('statTotalRevenue').textContent = `${totalRev} ETB`;
+            document.getElementById('statApprovedTickets').textContent = approved.length;
+            document.getElementById('statPendingTickets').textContent = pending.length;
+        }
+
+        // Modal Handlers
+        function openModal(imgSrc) {
+            document.getElementById('modalImage').src = imgSrc;
+            document.getElementById('imageModal').style.display = 'flex';
+        }
+        function closeModal() {
+            document.getElementById('imageModal').style.display = 'none';
+        }
+
+        // Update Ticket Status
+        async function updateStatus(id, status) {
+            const res = await fetch('/api/tickets/status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, status })
+            });
+            const data = await res.json();
+            if (data.success) {
+                loadDashboardData();
+            }
+        }
+
+        // Save Settings
+        document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const settingsData = {
+                ticket_price: document.getElementById('ticket_price').value,
+                max_tickets: document.getElementById('max_tickets').value,
+                prize_1st: document.getElementById('prize_1st').value,
+                prize_2nd: document.getElementById('prize_2nd').value,
+                end_date: new Date(Date.now() + 86400000 * 3).toISOString()
+            };
+
+            const res = await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(settingsData)
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert("Settings System-ii Sirriitti Fooyya'eera!");
+                loadDashboardData();
+            }
+        });
+
+        // Initialize App
+        loadDashboardData();
+    </script>
 </body>
 </html>
