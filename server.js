@@ -19,33 +19,8 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// <--- 2. Telegram Bot Setup Asitti Dabali --->
-
-// Command /start yeroo tuqamu deebii kennu
-bot.onText(/\/start/, (msg) => {
-  const chatId = msg.chat.id;
-  const firstName = msg.from.first_name || 'Fayyadamaa';
-
-  bot.sendMessage(
-    chatId,
-    `Baga nagaa fi gammachuun dhufte, ${firstName}!\n\nTicket bitachuuf App keenya fayyadamaa.`,
-    {
-      reply_markup: {
-        inline_keyboard: [
-          [
-            {
-              text: "🚀 App Banaa",
-              web_app: { url: "https://milki-app.onrender.com" } // URL Render keessan isa sirrii
-            }
-          ]
-        ]
-      }
-    }
-  );
-});
-// <--- Xumura Telegram Bot Setup --->
-
-app.use(express.json());
+// <--- 2. Telegram Bot Setup Asitti Dabali ---> 
+// .use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ==========================================
