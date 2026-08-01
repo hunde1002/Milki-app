@@ -1,137 +1,163 @@
-const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+<!DOCTYPE html>
+<html lang="om">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hunde Lottery System</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: #f8fafc; color: #1e293b; padding: 15px; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        h2 { font-size: 1.2rem; color: #4f46e5; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+        
+        /* Grid 1-50 Tiketti Filachuuf */
+        .grid-tickets { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 10px; }
+        .t-btn { padding: 12px 5px; text-align: center; border: 1px solid #cbd5e1; border-radius: 8px; font-weight: bold; background: #fff; cursor: pointer; transition: 0.2s; }
+        .t-btn.selected { background: #4f46e5; color: white; border-color: #4f46e5; }
+        .t-btn.taken { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; text-decoration: line-through; }
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+        .form-group { margin-top: 12px; }
+        .form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; }
 
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+        .btn-submit { width: 100%; background: #22c55e; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; font-size: 1rem; margin-top: 15px; cursor: pointer; }
+        #statusMsg { margin-top: 10px; text-align: center; font-weight: bold; }
+    </style>
+</head>
+<body>
 
-// Database Setup
-const dbFile = path.join(__dirname, 'database.sqlite');
-const db = new sqlite3.Database(dbFile, (err) => {
-    if (err) console.error('Database opening error: ', err.message);
-    else console.log('Connected to SQLite Database.');
-});
-
-// Create Tables
-db.serialize(() => {
-    db.run(`CREATE TABLE IF NOT EXISTS settings (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        ticket_price INTEGER DEFAULT 200,
-        max_tickets INTEGER DEFAULT 50,
-        prize_1st INTEGER DEFAULT 6000,
-        prize_2nd INTEGER DEFAULT 2000,
-        end_date TEXT
-    )`);
-
-    db.run(`CREATE TABLE IF NOT EXISTS tickets (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id TEXT,
-        username TEXT,
-        fullname TEXT,
-        phone TEXT,
-        ticket_numbers TEXT,
-        payment_method TEXT,
-        screenshot TEXT,
-        status TEXT DEFAULT 'Pending',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
-
-    db.run(`CREATE TABLE IF NOT EXISTS winners (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        winner_name TEXT,
-        prize_title TEXT,
-        photo_url TEXT,
-        announced_date TEXT
-    )`);
-
-    // Insert default settings if empty
-    db.get("SELECT COUNT(*) as count FROM settings", (err, row) => {
-        if (row.count === 0) {
-            const defaultDate = new Date(Date.now() + 86400000 * 3).toISOString();
-            db.run(`INSERT INTO settings (ticket_price, max_tickets, prize_1st, prize_2nd, end_date) VALUES (200, 50, 6000, 2000, ?)`, [defaultDate]);
-        }
-    });
-});
-
-// API Routes
-app.get('/api/settings', (req, res) => {
-    db.get("SELECT * FROM settings ORDER BY id DESC LIMIT 1", (err, row) => {
-        if (err) res.status(500).json({ error: err.message });
-        else res.json(row);
-    });
-});
-
-app.post('/api/settings', (req, res) => {
-    const { ticket_price, max_tickets, prize_1st, prize_2nd, end_date } = req.body;
-    db.run(`UPDATE settings SET ticket_price = ?, max_tickets = ?, prize_1st = ?, prize_2nd = ?, end_date = ? WHERE id = 1`,
-        [ticket_price, max_tickets, prize_1st, prize_2nd, end_date], function(err) {
-            if (err) res.status(500).json({ error: err.message });
-            else res.json({ success: true });
-        });
-});
-
-app.get('/api/tickets', (req, res) => {
-    db.all("SELECT * FROM tickets ORDER BY id DESC", (err, rows) => {
-        if (err) res.status(500).json({ error: err.message });
-        else res.json(rows);
-    });
-});
-
-app.post('/api/tickets', (req, res) => {
-    const { user_id, username, fullname, phone, ticket_numbers, payment_method, screenshot } = req.body;
-    db.run(`INSERT INTO tickets (user_id, username, fullname, phone, ticket_numbers, payment_method, screenshot) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [user_id, username, fullname, phone, ticket_numbers, payment_method, screenshot], function(err) {
-            if (err) res.status(500).json({ error: err.message });
-            else res.json({ success: true, ticketId: this.lastID });
-        });
-});
-
-app.post('/api/tickets/status', (req, res) => {
-    const { id, status } = req.body;
-    db.run(`UPDATE tickets SET status = ? WHERE id = ?`, [status, id], function(err) {
-        if (err) res.status(500).json({ error: err.message });
-        else res.json({ success: true });
-    });
-});
-
-app.get('/api/winners', (req, res) => {
-    db.all("SELECT * FROM winners ORDER BY id DESC", (err, rows) => {
-        if (err) res.status(500).json({ error: err.message });
-        else res.json(rows);
-    });
-});
-
-app.post('/api/winners', (req, res) => {
-    const { winner_name, prize_title, photo_url } = req.body;
-    db.run(`INSERT INTO winners (winner_name, prize_title, photo_url, announced_date) VALUES (?, ?, ?, datetime('now'))`,
-        [winner_name, prize_title, photo_url], function(err) {
-            if (err) res.status(500).json({ error: err.message });
-            else res.json({ success: true });
-        });
-});
-
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-});
-
-<!-- Admin Dashboard Content keessatti iddoo kana dabali -->
-<div id="admin-dashboard-content" style="display:none;">
-    <h3>Manage Settings & Prizes</h3>
-    <div class="form-group"><label>Ticket Price</label><input type="number" id="adm-price"></div>
-    <div class="form-group"><label>1st Prize</label><input type="number" id="adm-p1"></div>
-    <div class="form-group"><label>2nd Prize</label><input type="number" id="adm-p2"></div>
-    <button class="primary-btn" onclick="saveAdminSettings()">Save Settings</button>
-    
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
-        <h3>User Submissions & Approvals</h3>
-        <!-- Excel Export Button -->
-        <button class="primary-btn" style="width: auto; padding: 8px 14px; background: #22c55e;" onclick="exportToExcel()">
-            <i class="fa-solid fa-file-excel"></i> Export to Excel
-        </button>
+    <div class="card">
+        <h2><i class="fa-solid fa-ticket"></i> Lakkoofsa Tiketti Filadhu (1-50)</h2>
+        <p style="font-size:0.8rem; color:#64748b;">Lakkoofsa fedhte tuquun filadhu:</p>
+        <div class="grid-tickets" id="ticketGrid">
+            </div>
     </div>
-    
-    <div id="admin-tickets-table" style="margin-top: 10px;"></div>
-</div>
+
+    <div class="card">
+        <h2><i class="fa-solid fa-user-pen"></i> Odeeffannoo Keeti Galchi</h2>
+        <form id="buyForm">
+            <div class="form-group">
+                <label>Maqaa Guutuu:</label>
+                <input type="text" id="fullname" placeholder="Maqaa kee galchi" required>
+            </div>
+            <div class="form-group">
+                <label>Lakkoofsa Bilbilaa:</label>
+                <input type="tel" id="phone" placeholder="0911..." required>
+            </div>
+            <div class="form-group">
+                <label>Karaa Kaffaltii (Payment Method):</label>
+                <select id="payment_method">
+                    <option value="CBE Birr / CBE Account">CBE / CBE Birr</option>
+                    <option value="Telebirr">Telebirr</option>
+                    <option value="Bank of Abyssinia">Bank of Abyssinia</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Screenshot Kaffaltii (URL/Link):</label>
+                <input type="text" id="screenshot" placeholder="Linkii screenshot galchi" required>
+            </div>
+
+            <button type="submit" class="btn-submit"><i class="fa-solid fa-paper-plane"></i> Tiketti Bitadhu</button>
+        </form>
+        <p id="statusMsg"></p>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // Mini App skriinii guutuu akka ta'uuf
+
+        let selectedTickets = [];
+        let userId = tg.initDataUnsafe?.user?.id || "UnknownUser";
+        let username = tg.initDataUnsafe?.user?.username || "Guest";
+
+        // 1. Grid Tiketti 1-50 Generaate Gochuu
+        async function initTickets() {
+            const grid = document.getElementById('ticketGrid');
+            grid.innerHTML = '';
+
+            // Server irraa ticket-oota bitaman fetch gochuu
+            let takenTickets = [];
+            try {
+                const res = await fetch('/api/tickets');
+                const tickets = await res.json();
+                tickets.forEach(t => {
+                    if (t.ticket_numbers) {
+                        const nums = t.ticket_numbers.split(',').map(n => parseInt(n.trim()));
+                        takenTickets.push(...nums);
+                    }
+                });
+            } catch (e) { console.error(e); }
+
+            for (let i = 1; i <= 50; i++) {
+                const isTaken = takenTickets.includes(i);
+                const btn = document.createElement('div');
+                btn.className = `t-btn ${isTaken ? 'taken' : ''}`;
+                btn.textContent = i;
+
+                if (!isTaken) {
+                    btn.onclick = () => toggleSelect(i, btn);
+                }
+                grid.appendChild(btn);
+            }
+        }
+
+        // Tiketti Filachuu / Dhiisuu
+        function toggleSelect(num, el) {
+            if (selectedTickets.includes(num)) {
+                selectedTickets = selectedTickets.filter(n => n !== num);
+                el.classList.remove('selected');
+            } else {
+                selectedTickets.push(num);
+                el.classList.add('selected');
+            }
+        }
+
+        // Form Submit (Data Server-atti Erguu)
+        document.getElementById('buyForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msg = document.getElementById('statusMsg');
+
+            if (selectedTickets.length === 0) {
+                msg.style.color = 'red';
+                msg.textContent = "Moo: Maaloo jalqaba lakkoofsa tiketti filadhu!";
+                return;
+            }
+
+            msg.style.color = '#4f46e5';
+            msg.textContent = "Ergamaa jira...";
+
+            const payload = {
+                user_id: userId,
+                username: username,
+                fullname: document.getElementById('fullname').value,
+                phone: document.getElementById('phone').value,
+                ticket_numbers: selectedTickets.join(','),
+                payment_method: document.getElementById('payment_method').value,
+                screenshot: document.getElementById('screenshot').value
+            };
+
+            try {
+                const res = await fetch('/api/tickets', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    msg.style.color = 'green';
+                    msg.textContent = "Tikettiin kee galmaa'eera! Approval Admin eegaa jira.";
+                    setTimeout(() => tg.close(), 2000); // Telegram App suni cufama
+                }
+            } catch (err) {
+                msg.style.color = 'red';
+                msg.textContent = "Error: Galmeessuu hin danda'amne!";
+            }
+        });
+
+        initTickets();
+    </script>
+</body>
+</html>
