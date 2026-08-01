@@ -87,7 +87,7 @@
         const password = document.getElementById('password').value;
         const messageElement = document.getElementById('message');
 
-        // Yeroo inni reesponsi eegu
+        // Text yeroo request erganu
         messageElement.style.color = '#007bff';
         messageElement.textContent = "Ilaalamaa jira...";
 
@@ -102,13 +102,13 @@
 
             if (response.ok && data.success) {
                 messageElement.style.color = 'green';
-                messageElement.textContent = data.message || "Seensii milkaa'inaa!";
+                messageElement.textContent = "Seensii milkaa'inaa! Gara Dashboard-ti cehaa jira...";
 
-                // Erga milkaa'ee booda sekondii 1 booda gara dashboard geessuuf:
-                /* setTimeout(() => {
+                // Redirect gochuu (comment irraa banameera)
+                setTimeout(() => {
                     window.location.href = '/dashboard.html';
-                }, 1000); 
-                */
+                }, 1000);
+
             } else {
                 messageElement.style.color = 'red';
                 messageElement.textContent = data.message || "Username ykn Password dogoggoraa!";
