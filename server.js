@@ -15,17 +15,9 @@ const bot = new TelegramBot(TOKEN, { polling: true });
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
-const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
-const TelegramBot = require('node-telegram-bot-api'); // <--- 1. Kana asitti dabali
 
-const app = express();
-const PORT = process.env.PORT || 3000;
 
 // <--- 2. Telegram Bot Setup Asitti Dabali --->
-const TOKEN = process.env.BOT_TOKEN || 'BOT_TOKEN_KEESSAN_ASII_PUTHAA';
-const bot = new TelegramBot(TOKEN, { polling: true });
 
 // Command /start yeroo tuqamu deebii kennu
 bot.onText(/\/start/, (msg) => {
@@ -54,20 +46,18 @@ bot.onText(/\/start/, (msg) => {
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Database Setup (Koodii keessan isa kanaan duraa...)
-const dbFile = path.join(__dirname, 'database.sqlite');
-const db = new sqlite3.Database(dbFile, (err) => {
-  // ...
-});
 // ==========================================
 // 2. DATABASE SETUP (SQLite)
 // ==========================================
-const dbFile = path.join(__dirname, 'database.sqlite');
-const db = new sqlite3.Database(dbFile, (err) => {
-    if (err) console.error('Database opening error: ', err.message);
-    else console.log('Connected to SQLite Database successfully.');
+// Database Setup (Koodii keessan isa kanaan duraa...)
+const db = new sqlite3.Database('.database.db', (err) => {
+if (err) {
+             console.error('Database opening error: ', err.message);
+    } else { 
+            console.log('Connected to SQLite Database successfully.');
+    }
 });
-
+ 
 // Create Required Tables
 db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS settings (
@@ -148,6 +138,19 @@ bot.on('callback_query', (query) => {
 // ==========================================
 // 4. API ENDPOINTS (Backend Routes)
 // ==========================================
+// Admin Login API Route
+app.post('/api/admin/login', (req, res) => {
+  const { password } = req.body;
+  
+  // Password Admin keessanii asitti jijjiiraa (fakkeenyaaf: "admin1234")
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin1234";
+
+  if (password === ADMIN_PASSWORD) {
+    res.json({ success: true, message: "Login successful!" });
+  } else {
+    res.status(401).json({ success: false, message: "Password dogoggoraa ta'e!" });
+  }
+});
 
 // Get Settings
 app.get('/api/settings', (req, res) => {
