@@ -5,17 +5,149 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard</title>
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f9; }
-        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        h1 { color: #333; }
+        body { font-family: Arial, sans-serif; background-color: #f4f4f9; margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        h1 { text-align: center; color: #333; }
+        .section { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 25px; }
+        h2 { border-bottom: 2px solid #007bff; padding-bottom: 8px; color: #007bff; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        table, th, td { border: 1px solid #ddd; }
+        th, td { padding: 10px; text-align: left; }
+        th { background-color: #007bff; color: white; }
+        .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-approve { background-color: #28a745; color: white; }
+        .btn-reject { background-color: #dc3545; color: white; }
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 4px; }
+        .form-group input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        .btn-submit { background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h1>Baga Gara Admin Dashboard Dhuftan! 🎟️</h1>
-    <p>Asirratti ticket-oota approval kennuu fi settings jijjiiruu dandeessa.</p>
+<div class="container">
+    <h1>🎟️ Admin Dashboard</h1>
+
+    <div class="section">
+        <h2>1. Settings Jijjiiruu</h2>
+        <form id="settingsForm">
+            <div class="form-group">
+                <label>Gatii Tiketti (ETB):</label>
+                <input type="number" id="ticket_price" required>
+            </div>
+            <div class="form-group">
+                <label>Max Tickets:</label>
+                <input type="number" id="max_tickets" required>
+            </div>
+            <div class="form-group">
+                <label>Badhaasa 1ffaa (ETB):</label>
+                <input type="number" id="prize_1st" required>
+            </div>
+            <div class="form-group">
+                <label>Badhaasa 2ffaa (ETB):</label>
+                <input type="number" id="prize_2nd" required>
+            </div>
+            <button type="submit" class="btn-submit">Settings Save Godhi</button>
+        </form>
+    </div>
+
+    <div class="section">
+        <h2>2. Tikettiiwwan Tarree (Approvals)</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Maqaa</th>
+                    <th>Lakkoofsa Bilbilaa</th>
+                    <th>Lakkoofsa Tiketti</th>
+                    <th>Status</th>
+                    <th>Tarkaanfii (Action)</th>
+                </tr>
+            </thead>
+            <tbody id="ticketsTable">
+                </tbody>
+        </table>
+    </div>
 </div>
+
+<script>
+    // 1. Settings Load Godhuu
+    async function loadSettings() {
+        const res = await fetch('/api/settings');
+        const data = await res.json();
+        if (data) {
+            document.getElementById('ticket_price').value = data.ticket_price || 200;
+            document.getElementById('max_tickets').value = data.max_tickets || 50;
+            document.getElementById('prize_1st').value = data.prize_1st || 6000;
+            document.getElementById('prize_2nd').value = data.prize_2nd || 2000;
+        }
+    }
+
+    // 2. Settings Save Godhuu
+    document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const settingsData = {
+            ticket_price: document.getElementById('ticket_price').value,
+            max_tickets: document.getElementById('max_tickets').value,
+            prize_1st: document.getElementById('prize_1st').value,
+            prize_2nd: document.getElementById('prize_2nd').value,
+            end_date: new Date(Date.now() + 86400000 * 3).toISOString()
+        };
+
+        const res = await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(settingsData)
+        });
+        const result = await res.json();
+        if (result.success) alert("Settings sirriitti fooyya'eera!");
+    });
+
+    // 3. Tickets Fetch Godhuu & Table-tti Galchuu
+    async function loadTickets() {
+        const res = await fetch('/api/tickets');
+        const tickets = await res.json();
+        const tableBody = document.getElementById('ticketsTable');
+        tableBody.innerHTML = '';
+
+        tickets.forEach(ticket => {
+            const row = `
+                <tr>
+                    <td>${ticket.id}</td>
+                    <td>${ticket.fullname || ticket.username}</td>
+                    <td>${ticket.phone}</td>
+                    <td>${ticket.ticket_numbers}</td>
+                    <td><b>${ticket.status}</b></td>
+                    <td>
+                        ${ticket.status === 'Pending' ? `
+                            <button class="btn btn-approve" onclick="updateStatus(${ticket.id}, 'Approved')">Approve</button>
+                            <button class="btn btn-reject" onclick="updateStatus(${ticket.id}, 'Rejected')">Reject</button>
+                        ` : 'Xumurameera'}
+                    </td>
+                </tr>
+            `;
+            tableBody.innerHTML += row;
+        });
+    }
+
+    // 4. Ticket Approve/Reject Godhuu
+    async function updateStatus(id, status) {
+        const res = await fetch('/api/tickets/status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, status })
+        });
+        const result = await res.json();
+        if (result.success) {
+            alert(`Ticket #${id} status status Gara ${status}-tti jijjiirameera!`);
+            loadTickets();
+        }
+    }
+
+    // Page yeroo banamu
+    loadSettings();
+    loadTickets();
+</script>
 
 </body>
 </html>
