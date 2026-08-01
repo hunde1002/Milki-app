@@ -7,32 +7,63 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ==========================================
-// 1. TELEGRAM BOT CONFIGURATION
+// 1. MIDDLEWARES & STATIC FILES
 // ==========================================
-// Token Bot kee BotFather irraa argatte asitti galchi
-const TOKEN = process.env.BOT_TOKEN;
-const bot = new TelegramBot(TOKEN, { polling: true });
-
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// <--- 2. Telegram Bot Setup Asitti Dabali ---> 
+// ==========================================
+// 2. TELEGRAM BOT CONFIGURATION
+// ==========================================
+const TOKEN = process.env.BOT_TOKEN || 'YOUR_TELEGRAM_BOT_TOKEN_HERE';
+const bot = new TelegramBot(TOKEN, { polling: true });
+const WEB_APP_URL = 'https://milki-app.onrender.com';
+
+bot.onText(/\/start/, (msg) => {
+    const chatId = msg.chat.id;
+    const userName = msg.from.first_name || "Hiriyyaa";
+
+    const welcomeMessage = `
+Baga gara bot keenya dhuftan, ${userName}! 🎟️
+Welcome to Hunde Lottery System.
+እንኳን ወደ ሁንዴ ሎተሪ በደህና መጡ!
+
+Carraa gaarii! Tikitii murachuuf liinkii armaan gadii tuqaa:
+    `;
+
+    bot.sendMessage(chatId, welcomeMessage, {
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: "🎟️ Open Lottery App", web_app: { url: WEB_APP_URL } }],
+                [{ text: "👥 Hiriyyaa Affeeru (Referral)", callback_data: 'referral' }]
+            ]
+        }
+    });
+});
+
+bot.on('callback_query', (query) => {
+    const chatId = query.message.chat.id;
+    if (query.data === 'referral') {
+        bot.sendMessage(chatId, `🔗 Linkii affeerraa kee: https://t.me/YourBotName?start=ref_${chatId}\nHiriyoota kee afeeriitii carraa dachaaa argadhu!`);
+    }
+    bot.answerCallbackQuery(query.id);
+});
 
 // ==========================================
-// 2. DATABASE SETUP (SQLite)
+// 3. DATABASE SETUP (SQLite)
 // ==========================================
-// Database Setup (Koodii keessan isa kanaan duraa...)
-const db = new sqlite3.Database('.database.db', (err) => {
-if (err) {
-             console.error('Database opening error: ', err.message);
+const db = new sqlite3.Database('./database.db', (err) => {
+    if (err) {
+        console.error('Database opening error: ', err.message);
     } else { 
-            console.log('Connected to SQLite Database successfully.');
+        console.log('Connected to SQLite Database successfully.');
     }
 });
- 
+
 // Create Required Tables
 db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS settings (
@@ -75,56 +106,21 @@ db.serialize(() => {
 });
 
 // ==========================================
-// 3. TELEGRAM BOT LOGIC
-// ==========================================
-bot.onText(/\/start/, (msg) => {
-    const chatId = msg.chat.id;
-    const userName = msg.from.first_name || "Hiriyyaa";
-
-    const welcomeMessage = `
-Baga gara bot kenya dhuftan, ${userName}! 🎟️
-Welcome to Hunde Lottery System.
-እንኳን ወደ ሁንዴ ሎተሪ በደህና መጡ!
-
-Carraa gaarii! Tikitii murachuuf liinkii armaan gadii tuqaa:
-    `;
-
-    // Yoo Localhost irra jirtu linkii Ngrok, yoo online host goote URL server kee asitti galchi
-    const webAppUrl = 'https://milki-app.onrender.com'; 
-
-    bot.sendMessage(chatId, welcomeMessage, {
-        reply_markup: {
-            inline_keyboard: [
-                [{ text: "🎟️ Open Lottery App", web_app: { url: webAppUrl } }],
-                [{ text: "👥 Hiriyyaa Affeeru (Referral)", callback_data: 'referral' }]
-            ]
-        }
-    });
-});
-
-bot.on('callback_query', (query) => {
-    const chatId = query.message.chat.id;
-    if (query.data === 'referral') {
-        bot.sendMessage(chatId, `🔗 Linkii affeerraa kee: https://t.me/YourBotName?start=ref_${chatId}\nHiriyoota kee afeeriitii carraa dachaaa argadhu!`);
-    }
-    bot.answerCallbackQuery(query.id);
-});
-
-// ==========================================
 // 4. API ENDPOINTS (Backend Routes)
 // ==========================================
-// Admin Login API Route
-app.post('/api/admin/login', (req, res) => {
-  const { password } = req.body;
-  
-  // Password Admin keessanii asitti jijjiiraa (fakkeenyaaf: "admin1234")
-  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin1234";
 
-  if (password === ADMIN_PASSWORD) {
-    res.json({ success: true, message: "Login successful!" });
-  } else {
-    res.status(401).json({ success: false, message: "Password dogoggoraa ta'e!" });
-  }
+// Admin Login API Route
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "password123";
+
+app.post('/api/admin/login', (req, res) => {
+    const { username, password } = req.body;
+
+    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+        return res.status(200).json({ success: true, message: "Akkamitti nagaatti seente, Admin!" });
+    } else {
+        return res.status(401).json({ success: false, message: "Username ykn Password dogoggoraa!" });
+    }
 });
 
 // Get Settings
