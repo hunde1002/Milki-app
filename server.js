@@ -15,7 +15,9 @@ const bot = new TelegramBot(TOKEN, { polling: true });
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
-
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 // <--- 2. Telegram Bot Setup Asitti Dabali --->
 
