@@ -20,8 +20,6 @@ app.get('/', (req, res) => {
 });
 
 // <--- 2. Telegram Bot Setup Asitti Dabali ---> 
-// .use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
 
 // ==========================================
 // 2. DATABASE SETUP (SQLite)
