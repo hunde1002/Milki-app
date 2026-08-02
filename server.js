@@ -4,12 +4,15 @@ const { Pool } = require('pg');
 const path = require('path');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
-const TelegramBot = require('node-telegram-bot-api');
+const TelegramBot = require('node-telegram-bot-api'); // Destructuring { } malee!
 const multer = require('multer');
 const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Trust Proxy for Express Rate Limit (Render Proxy Support)
+app.set('trust proxy', 1);
 
 // ==========================================
 // 1. FOLDER UPLOADS CHECK / CREATE
