@@ -4,7 +4,7 @@ const { Pool } = require('pg');
 const path = require('path');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
-const TelegramBot = require('node-telegram-bot-api'); // Destructuring { } malee!
+const TelegramBot = require('node-telegram-bot-api').TelegramBot || require('node-telegram-bot-api');
 const multer = require('multer');
 const fs = require('fs');
 
