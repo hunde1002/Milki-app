@@ -5,16 +5,32 @@ const path = require('path');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const TelegramBot = require('node-telegram-bot-api');
+const multer = require('multer');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ==========================================
-// 1. MIDDLEWARES, SECURITY & STATIC FILES
+// 1. FOLDER UPLOADS CHECK / CREATE
+// ==========================================
+// Folder 'uploads' yoo hin jirre ofumaan akka uumu gochuu
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+    console.log("Folder 'uploads' haaraa uumameera!");
+}
+
+// ==========================================
+// 2. MIDDLEWARES, SECURITY & STATIC FILES
 // ==========================================
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(cors());
+
+// Folder 'public' fi 'uploads' static gochuu
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Anti-Spam Rate Limiting (API Security)
 const limiter = rateLimit({
@@ -24,13 +40,31 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
+// ==========================================
+// 3. MULTER STORAGE SETUP (SCREENSHOTS)
+// ==========================================
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'uploads/');
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const upload = multer({ 
+    storage: storage,
+    limits: { fileSize: 10 * 1024 * 1024 } // Limit MB 10
+});
+
 // Root Route
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // ==========================================
-// 2. TELEGRAM BOT CONFIGURATION
+// 4. TELEGRAM BOT CONFIGURATION
 // ==========================================
 const TOKEN = process.env.BOT_TOKEN || 'YOUR_TELEGRAM_BOT_TOKEN_HERE';
 const bot = new TelegramBot(TOKEN, { polling: true });
@@ -67,7 +101,7 @@ bot.on('callback_query', (query) => {
 });
 
 // ==========================================
-// 3. DATABASE SETUP (SQLite)
+// 5. DATABASE SETUP (SQLite)
 // ==========================================
 const db = new sqlite3.Database('./database.db', (err) => {
     if (err) {
@@ -77,7 +111,6 @@ const db = new sqlite3.Database('./database.db', (err) => {
     }
 });
 
-// Create Required Tables & Seed Data
 db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS settings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -123,7 +156,7 @@ db.serialize(() => {
 });
 
 // ==========================================
-// 4. API ENDPOINTS (Backend Routes)
+// 6. API ENDPOINTS (Backend Routes)
 // ==========================================
 
 // Admin Login API Route
@@ -166,26 +199,37 @@ app.get('/api/tickets', (req, res) => {
     });
 });
 
-// Create New Ticket Purchase
-app.post('/api/tickets', (req, res) => {
-    const { user_id, username, fullname, phone, ticket_numbers, payment_method, screenshot } = req.body;
+// CREATE NEW TICKET PURCHASE (WITH SCREENSHOT UPLOAD)
+app.post('/api/tickets', upload.single('screenshot'), (req, res) => {
+    try {
+        const { user_id, username, fullname, phone, ticket_numbers, payment_method } = req.body;
 
-    if (!fullname || !phone || !ticket_numbers || !screenshot) {
-        return res.status(400).json({ success: false, message: "Maaloo odeeffannoo guutuu galchaa!" });
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: "Screenshot-n ol hin fe'amne! Maaloo screenshot itti dabalii yaali." });
+        }
+
+        if (!fullname || !phone || !ticket_numbers) {
+            return res.status(400).json({ success: false, message: "Maaloo odeeffannoo guutuu galchaa!" });
+        }
+
+        const screenshotPath = req.file.path; // Path-ii suuraan uploads/ keessatti save ta'ee
+
+        db.run(`INSERT INTO tickets (user_id, username, fullname, phone, ticket_numbers, payment_method, screenshot) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [user_id, username, fullname, phone, ticket_numbers, payment_method, screenshotPath], function(err) {
+                if (err) {
+                    return res.status(500).json({ success: false, error: err.message });
+                } else {
+                    return res.json({ 
+                        success: true, 
+                        message: "Tikettiin keessan milkaa'inaan ergameera. Approval Admin eegaa jira!", 
+                        ticketId: this.lastID 
+                    });
+                }
+            });
+    } catch (error) {
+        console.error("Error upload ticket:", error);
+        return res.status(500).json({ success: false, message: "Server error uumameera!" });
     }
-
-    db.run(`INSERT INTO tickets (user_id, username, fullname, phone, ticket_numbers, payment_method, screenshot) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [user_id, username, fullname, phone, ticket_numbers, payment_method, screenshot], function(err) {
-            if (err) {
-                res.status(500).json({ success: false, error: err.message });
-            } else {
-                res.json({ 
-                    success: true, 
-                    message: "Tikettiin keessan milkaa'inaan ergameera. Approval Admin eegaa jira!", 
-                    ticketId: this.lastID 
-                });
-            }
-        });
 });
 
 // Update Ticket Status (Approve/Reject by Admin)
@@ -216,7 +260,7 @@ app.post('/api/winners', (req, res) => {
 });
 
 // ==========================================
-// 5. START SERVER
+// 7. START SERVER
 // ==========================================
 app.listen(PORT, () => {
     console.log(`Server and Telegram Bot are running smoothly on port ${PORT}`);
