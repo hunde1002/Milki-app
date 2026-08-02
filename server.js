@@ -1,10 +1,10 @@
 require('dotenv').config();
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
+const { Pool } = require('pg');
 const path = require('path');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
-const { TelegramBot } = require('node-telegram-bot-api');
+const TelegramBot = require('node-telegram-bot-api');
 const multer = require('multer');
 const fs = require('fs');
 
@@ -31,16 +31,16 @@ app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Anti-Spam Rate Limiting (API Security)
+// Anti-Spam Rate Limiting
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // Daqiiqaa 15
-    max: 100, // IP tokko irraa Request 100 qofa
+    windowMs: 15 * 60 * 1000,
+    max: 100,
     message: { success: false, message: "Request baay'ee ergitaniirtu! Maaloo daqiiqaa 15 booda deebi'aa yaalaa." }
 });
 app.use('/api/', limiter);
 
 // ==========================================
-// 3. MULTER STORAGE SETUP (SCREENSHOTS)
+// 3. MULTER STORAGE SETUP
 // ==========================================
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -54,7 +54,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ 
     storage: storage,
-    limits: { fileSize: 10 * 1024 * 1024 } // Limit MB 10
+    limits: { fileSize: 10 * 1024 * 1024 }
 });
 
 // Root Route
@@ -63,7 +63,7 @@ app.get('/', (req, res) => {
 });
 
 // ==========================================
-// 4. TELEGRAM BOT CONFIGURATION (SAFE LAUNCH)
+// 4. TELEGRAM BOT CONFIGURATION
 // ==========================================
 const TOKEN = process.env.BOT_TOKEN;
 const WEB_APP_URL = process.env.WEB_APP_URL || 'https://milki-app.onrender.com';
@@ -108,69 +108,85 @@ Carraa gaarii! Tikitii murachuuf liinkii armaan gadii tuqaa:
     } catch (err) {
         console.error("Telegram Bot initialization error:", err.message);
     }
-} else {
-    console.warn("⚠️ BOT_TOKEN process.env keessa hin jiru. Bot-n hin kaane!");
 }
 
 // ==========================================
-// 5. DATABASE SETUP (SQLite)
+// 5. POSTGRESQL DATABASE SETUP (PERSISTENT)
 // ==========================================
-const db = new sqlite3.Database('./database.db', (err) => {
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
+});
+
+pool.connect((err, client, release) => {
     if (err) {
-        console.error('Database opening error: ', err.message);
-    } else { 
-        console.log('Connected to SQLite Database successfully.');
+        console.error('Error connecting to PostgreSQL database:', err.stack);
+    } else {
+        console.log('Connected to PostgreSQL Database successfully!');
+        release();
     }
 });
 
-db.serialize(() => {
-    db.run(`CREATE TABLE IF NOT EXISTS settings (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        ticket_price INTEGER DEFAULT 200,
-        max_tickets INTEGER DEFAULT 50,
-        prize_1st INTEGER DEFAULT 6000,
-        prize_2nd INTEGER DEFAULT 2000,
-        admin_name TEXT DEFAULT 'Hunde Tesfaye Jule',
-        cbe_acc TEXT DEFAULT '1000512022433',
-        telebirr_acc TEXT DEFAULT '0910020814',
-        end_date TEXT
-    )`);
+// Initialize Tables
+const initDb = async () => {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS settings (
+                id SERIAL PRIMARY KEY,
+                ticket_price INT DEFAULT 200,
+                max_tickets INT DEFAULT 50,
+                prize_1st INT DEFAULT 6000,
+                prize_2nd INT DEFAULT 2000,
+                admin_name VARCHAR(100) DEFAULT 'Hunde Tesfaye Jule',
+                cbe_acc VARCHAR(50) DEFAULT '1000512022433',
+                telebirr_acc VARCHAR(50) DEFAULT '0910020814',
+                end_date VARCHAR(100)
+            );
+        `);
 
-    db.run(`CREATE TABLE IF NOT EXISTS tickets (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id TEXT,
-        username TEXT,
-        fullname TEXT,
-        phone TEXT,
-        ticket_numbers TEXT,
-        payment_method TEXT,
-        screenshot TEXT,
-        status TEXT DEFAULT 'Pending',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS tickets (
+                id SERIAL PRIMARY KEY,
+                user_id VARCHAR(100),
+                username VARCHAR(100),
+                fullname VARCHAR(100),
+                phone VARCHAR(50),
+                ticket_numbers TEXT,
+                payment_method VARCHAR(50),
+                screenshot TEXT,
+                status VARCHAR(50) DEFAULT 'Pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
 
-    db.run(`CREATE TABLE IF NOT EXISTS winners (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        winner_name TEXT,
-        prize_title TEXT,
-        photo_url TEXT,
-        announced_date TEXT
-    )`);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS winners (
+                id SERIAL PRIMARY KEY,
+                winner_name VARCHAR(100),
+                prize_title VARCHAR(100),
+                photo_url TEXT,
+                announced_date VARCHAR(100)
+            );
+        `);
 
-    db.get("SELECT COUNT(*) as count FROM settings", (err, row) => {
-        if (!err && row && row.count === 0) {
+        const res = await pool.query("SELECT COUNT(*) FROM settings");
+        if (parseInt(res.rows[0].count) === 0) {
             const defaultDate = new Date(Date.now() + 86400000 * 3).toISOString();
-            db.run(`INSERT INTO settings (ticket_price, max_tickets, prize_1st, prize_2nd, admin_name, cbe_acc, telebirr_acc, end_date) 
-                    VALUES (200, 50, 6000, 2000, 'Hunde Tesfaye Jule', '1000512022433', '0910020814', ?)`, [defaultDate]);
+            await pool.query(`
+                INSERT INTO settings (ticket_price, max_tickets, prize_1st, prize_2nd, admin_name, cbe_acc, telebirr_acc, end_date)
+                VALUES (200, 50, 6000, 2000, 'Hunde Tesfaye Jule', '1000512022433', '0910020814', $1)
+            `, [defaultDate]);
         }
-    });
-});
+    } catch (err) {
+        console.error("DB Initialization Error:", err);
+    }
+};
+
+initDb();
 
 // ==========================================
-// 6. API ENDPOINTS (Backend Routes)
+// 6. API ENDPOINTS
 // ==========================================
-
-// Admin Login
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "password123";
 
@@ -184,33 +200,41 @@ app.post('/api/admin/login', (req, res) => {
 });
 
 // Get Settings
-app.get('/api/settings', (req, res) => {
-    db.get("SELECT * FROM settings ORDER BY id DESC LIMIT 1", (err, row) => {
-        if (err) return res.status(500).json({ success: false, error: err.message });
-        return res.json(row || {});
-    });
+app.get('/api/settings', async (req, res) => {
+    try {
+        const result = await pool.query("SELECT * FROM settings ORDER BY id DESC LIMIT 1");
+        return res.json(result.rows[0] || {});
+    } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
 });
 
-// Update Settings (Admin)
-app.post('/api/settings', (req, res) => {
+// Update Settings
+app.post('/api/settings', async (req, res) => {
     const { ticket_price, max_tickets, prize_1st, prize_2nd, end_date } = req.body;
-    db.run(`UPDATE settings SET ticket_price = ?, max_tickets = ?, prize_1st = ?, prize_2nd = ?, end_date = ? WHERE id = 1`,
-        [ticket_price, max_tickets, prize_1st, prize_2nd, end_date], function(err) {
-            if (err) return res.status(500).json({ success: false, error: err.message });
-            return res.json({ success: true });
-        });
+    try {
+        await pool.query(
+            `UPDATE settings SET ticket_price = $1, max_tickets = $2, prize_1st = $3, prize_2nd = $4, end_date = $5 WHERE id = 1`,
+            [ticket_price, max_tickets, prize_1st, prize_2nd, end_date]
+        );
+        return res.json({ success: true });
+    } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
 });
 
 // Get All Tickets
-app.get('/api/tickets', (req, res) => {
-    db.all("SELECT * FROM tickets ORDER BY id DESC", (err, rows) => {
-        if (err) return res.status(500).json({ success: false, error: err.message });
-        return res.json(rows || []);
-    });
+app.get('/api/tickets', async (req, res) => {
+    try {
+        const result = await pool.query("SELECT * FROM tickets ORDER BY id DESC");
+        return res.json(result.rows || []);
+    } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
 });
 
 // CREATE NEW TICKET PURCHASE
-const handleTicketPurchase = (req, res) => {
+const handleTicketPurchase = async (req, res) => {
     try {
         const { user_id, username, fullname, phone, ticket_numbers, payment_method } = req.body;
 
@@ -220,22 +244,20 @@ const handleTicketPurchase = (req, res) => {
 
         const screenshotPath = req.file.path;
 
-        db.run(`INSERT INTO tickets (user_id, username, fullname, phone, ticket_numbers, payment_method, screenshot) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [user_id || '', username || '', fullname || '', phone || '', ticket_numbers || '', payment_method || '', screenshotPath], function(err) {
-                if (err) {
-                    console.error("DB Insert Error:", err.message);
-                    return res.status(500).json({ success: false, message: "Database Error: " + err.message });
-                } else {
-                    return res.json({ 
-                        success: true, 
-                        message: "Tikettiin keessan milkaa'inaan ergameera. Approval Admin eegaa jira!", 
-                        ticketId: this.lastID 
-                    });
-                }
-            });
+        const result = await pool.query(
+            `INSERT INTO tickets (user_id, username, fullname, phone, ticket_numbers, payment_method, screenshot) 
+             VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+            [user_id || '', username || '', fullname || '', phone || '', ticket_numbers || '', payment_method || '', screenshotPath]
+        );
+
+        return res.json({ 
+            success: true, 
+            message: "Tikettiin keessan milkaa'inaan ergameera. Approval Admin eegaa jira!", 
+            ticketId: result.rows[0].id 
+        });
     } catch (error) {
         console.error("Error upload ticket:", error);
-        return res.status(500).json({ success: false, message: "Server error uumameera!" });
+        return res.status(500).json({ success: false, message: "Server error uumameera: " + error.message });
     }
 };
 
@@ -243,30 +265,38 @@ app.post('/api/tickets', upload.single('screenshot'), handleTicketPurchase);
 app.post('/api/buy-ticket', upload.single('screenshot'), handleTicketPurchase);
 
 // Update Ticket Status
-app.post('/api/tickets/status', (req, res) => {
+app.post('/api/tickets/status', async (req, res) => {
     const { id, status } = req.body;
-    db.run(`UPDATE tickets SET status = ? WHERE id = ?`, [status, id], function(err) {
-        if (err) return res.status(500).json({ success: false, error: err.message });
+    try {
+        await pool.query(`UPDATE tickets SET status = $1 WHERE id = $2`, [status, id]);
         return res.json({ success: true, message: `Ticket #${id} status ${status}-tti jijjiirameera.` });
-    });
+    } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
 });
 
 // Get Winners
-app.get('/api/winners', (req, res) => {
-    db.all("SELECT * FROM winners ORDER BY id DESC", (err, rows) => {
-        if (err) return res.status(500).json({ success: false, error: err.message });
-        return res.json(rows || []);
-    });
+app.get('/api/winners', async (req, res) => {
+    try {
+        const result = await pool.query("SELECT * FROM winners ORDER BY id DESC");
+        return res.json(result.rows || []);
+    } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
 });
 
-// Add Winner (Admin)
-app.post('/api/winners', (req, res) => {
+// Add Winner
+app.post('/api/winners', async (req, res) => {
     const { winner_name, prize_title, photo_url } = req.body;
-    db.run(`INSERT INTO winners (winner_name, prize_title, photo_url, announced_date) VALUES (?, ?, ?, datetime('now'))`,
-        [winner_name, prize_title, photo_url], function(err) {
-            if (err) return res.status(500).json({ success: false, error: err.message });
-            return res.json({ success: true });
-        });
+    try {
+        await pool.query(
+            `INSERT INTO winners (winner_name, prize_title, photo_url, announced_date) VALUES ($1, $2, $3, NOW())`,
+            [winner_name, prize_title, photo_url]
+        );
+        return res.json({ success: true });
+    } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
 });
 
 // ==========================================
