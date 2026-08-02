@@ -14,7 +14,6 @@ const PORT = process.env.PORT || 3000;
 // ==========================================
 // 1. FOLDER UPLOADS CHECK / CREATE
 // ==========================================
-// Folder 'uploads' yoo hin jirre ofumaan akka uumu gochuu
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
@@ -28,7 +27,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
-// Folder 'public' fi 'uploads' static gochuu
+// Static Files
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
@@ -145,7 +144,6 @@ db.serialize(() => {
         announced_date TEXT
     )`);
 
-    // Insert default settings if empty
     db.get("SELECT COUNT(*) as count FROM settings", (err, row) => {
         if (row && row.count === 0) {
             const defaultDate = new Date(Date.now() + 86400000 * 3).toISOString();
@@ -159,13 +157,12 @@ db.serialize(() => {
 // 6. API ENDPOINTS (Backend Routes)
 // ==========================================
 
-// Admin Login API Route
+// Admin Login
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "password123";
 
 app.post('/api/admin/login', (req, res) => {
     const { username, password } = req.body;
-
     if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
         return res.status(200).json({ success: true, message: "Akkamitti nagaatti seente, Admin!" });
     } else {
@@ -200,7 +197,8 @@ app.get('/api/tickets', (req, res) => {
 });
 
 // CREATE NEW TICKET PURCHASE (WITH SCREENSHOT UPLOAD)
-app.post('/api/tickets', upload.single('screenshot'), (req, res) => {
+// Frontend irraa fetch('/api/tickets') ykn fetch('/api/buy-ticket') yoo goote lamaanisaa akka hojjetaniif link gochuu
+const handleTicketPurchase = (req, res) => {
     try {
         const { user_id, username, fullname, phone, ticket_numbers, payment_method } = req.body;
 
@@ -208,16 +206,13 @@ app.post('/api/tickets', upload.single('screenshot'), (req, res) => {
             return res.status(400).json({ success: false, message: "Screenshot-n ol hin fe'amne! Maaloo screenshot itti dabalii yaali." });
         }
 
-        if (!fullname || !phone || !ticket_numbers) {
-            return res.status(400).json({ success: false, message: "Maaloo odeeffannoo guutuu galchaa!" });
-        }
-
-        const screenshotPath = req.file.path; // Path-ii suuraan uploads/ keessatti save ta'ee
+        const screenshotPath = req.file.path;
 
         db.run(`INSERT INTO tickets (user_id, username, fullname, phone, ticket_numbers, payment_method, screenshot) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [user_id, username, fullname, phone, ticket_numbers, payment_method, screenshotPath], function(err) {
+            [user_id || '', username || '', fullname || '', phone || '', ticket_numbers || '', payment_method || '', screenshotPath], function(err) {
                 if (err) {
-                    return res.status(500).json({ success: false, error: err.message });
+                    console.error("DB Insert Error:", err.message);
+                    return res.status(500).json({ success: false, message: "Database Error: " + err.message });
                 } else {
                     return res.json({ 
                         success: true, 
@@ -230,9 +225,13 @@ app.post('/api/tickets', upload.single('screenshot'), (req, res) => {
         console.error("Error upload ticket:", error);
         return res.status(500).json({ success: false, message: "Server error uumameera!" });
     }
-});
+};
 
-// Update Ticket Status (Approve/Reject by Admin)
+// Route lachuunuu akka hojjetuuf (Frontend kee kamiinuu yoo waame akka hin gannineef)
+app.post('/api/tickets', upload.single('screenshot'), handleTicketPurchase);
+app.post('/api/buy-ticket', upload.single('screenshot'), handleTicketPurchase);
+
+// Update Ticket Status
 app.post('/api/tickets/status', (req, res) => {
     const { id, status } = req.body;
     db.run(`UPDATE tickets SET status = ? WHERE id = ?`, [status, id], function(err) {
