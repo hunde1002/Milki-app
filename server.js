@@ -63,41 +63,54 @@ app.get('/', (req, res) => {
 });
 
 // ==========================================
-// 4. TELEGRAM BOT CONFIGURATION
+// 4. TELEGRAM BOT CONFIGURATION (SAFE LAUNCH)
 // ==========================================
-const TOKEN = process.env.BOT_TOKEN || 'YOUR_TELEGRAM_BOT_TOKEN_HERE';
-const bot = new TelegramBot(TOKEN, { polling: true });
+const TOKEN = process.env.BOT_TOKEN;
 const WEB_APP_URL = process.env.WEB_APP_URL || 'https://milki-app.onrender.com';
 
-bot.onText(/\/start/, (msg) => {
-    const chatId = msg.chat.id;
-    const userName = msg.from.first_name || "Hiriyyaa";
+if (TOKEN && TOKEN !== 'YOUR_TELEGRAM_BOT_TOKEN_HERE') {
+    try {
+        const bot = new TelegramBot(TOKEN, { polling: true });
 
-    const welcomeMessage = `
+        bot.on('polling_error', (error) => {
+            console.error(`[Telegram Bot Error]: ${error.message}`);
+        });
+
+        bot.onText(/\/start/, (msg) => {
+            const chatId = msg.chat.id;
+            const userName = msg.from.first_name || "Hiriyyaa";
+
+            const welcomeMessage = `
 Baga gara bot keenya dhuftan, ${userName}! 🎟️
 Welcome to Hunde Lottery System.
 እንኳን ወደ ሁንዴ ሎተሪ በደህና መጡ!
 
 Carraa gaarii! Tikitii murachuuf liinkii armaan gadii tuqaa:
-    `;
+            `;
 
-    bot.sendMessage(chatId, welcomeMessage, {
-        reply_markup: {
-            inline_keyboard: [
-                [{ text: "🎟️ Open Lottery App", web_app: { url: WEB_APP_URL } }],
-                [{ text: "👥 Hiriyyaa Affeeru (Referral)", callback_data: 'referral' }]
-            ]
-        }
-    });
-});
+            bot.sendMessage(chatId, welcomeMessage, {
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: "🎟️ Open Lottery App", web_app: { url: WEB_APP_URL } }],
+                        [{ text: "👥 Hiriyyaa Affeeru (Referral)", callback_data: 'referral' }]
+                    ]
+                }
+            });
+        });
 
-bot.on('callback_query', (query) => {
-    const chatId = query.message.chat.id;
-    if (query.data === 'referral') {
-        bot.sendMessage(chatId, `🔗 Linkii affeerraa kee: https://t.me/YourBotName?start=ref_${chatId}\nHiriyoota kee afeeriitii carraa dachaaa argadhu!`);
+        bot.on('callback_query', (query) => {
+            const chatId = query.message.chat.id;
+            if (query.data === 'referral') {
+                bot.sendMessage(chatId, `🔗 Linkii affeerraa kee: https://t.me/YourBotName?start=ref_${chatId}\nHiriyoota kee afeeriitii carraa dachaaa argadhu!`);
+            }
+            bot.answerCallbackQuery(query.id);
+        });
+    } catch (err) {
+        console.error("Telegram Bot initialization error:", err.message);
     }
-    bot.answerCallbackQuery(query.id);
-});
+} else {
+    console.warn("⚠️ BOT_TOKEN process.env keessa hin jiru. Bot-n hin kaane!");
+}
 
 // ==========================================
 // 5. DATABASE SETUP (SQLite)
@@ -145,7 +158,7 @@ db.serialize(() => {
     )`);
 
     db.get("SELECT COUNT(*) as count FROM settings", (err, row) => {
-        if (row && row.count === 0) {
+        if (!err && row && row.count === 0) {
             const defaultDate = new Date(Date.now() + 86400000 * 3).toISOString();
             db.run(`INSERT INTO settings (ticket_price, max_tickets, prize_1st, prize_2nd, admin_name, cbe_acc, telebirr_acc, end_date) 
                     VALUES (200, 50, 6000, 2000, 'Hunde Tesfaye Jule', '1000512022433', '0910020814', ?)`, [defaultDate]);
@@ -173,8 +186,8 @@ app.post('/api/admin/login', (req, res) => {
 // Get Settings
 app.get('/api/settings', (req, res) => {
     db.get("SELECT * FROM settings ORDER BY id DESC LIMIT 1", (err, row) => {
-        if (err) res.status(500).json({ success: false, error: err.message });
-        else res.json(row);
+        if (err) return res.status(500).json({ success: false, error: err.message });
+        return res.json(row || {});
     });
 });
 
@@ -183,21 +196,20 @@ app.post('/api/settings', (req, res) => {
     const { ticket_price, max_tickets, prize_1st, prize_2nd, end_date } = req.body;
     db.run(`UPDATE settings SET ticket_price = ?, max_tickets = ?, prize_1st = ?, prize_2nd = ?, end_date = ? WHERE id = 1`,
         [ticket_price, max_tickets, prize_1st, prize_2nd, end_date], function(err) {
-            if (err) res.status(500).json({ success: false, error: err.message });
-            else res.json({ success: true });
+            if (err) return res.status(500).json({ success: false, error: err.message });
+            return res.json({ success: true });
         });
 });
 
 // Get All Tickets
 app.get('/api/tickets', (req, res) => {
     db.all("SELECT * FROM tickets ORDER BY id DESC", (err, rows) => {
-        if (err) res.status(500).json({ success: false, error: err.message });
-        else res.json(rows);
+        if (err) return res.status(500).json({ success: false, error: err.message });
+        return res.json(rows || []);
     });
 });
 
-// CREATE NEW TICKET PURCHASE (WITH SCREENSHOT UPLOAD)
-// Frontend irraa fetch('/api/tickets') ykn fetch('/api/buy-ticket') yoo goote lamaanisaa akka hojjetaniif link gochuu
+// CREATE NEW TICKET PURCHASE
 const handleTicketPurchase = (req, res) => {
     try {
         const { user_id, username, fullname, phone, ticket_numbers, payment_method } = req.body;
@@ -227,7 +239,6 @@ const handleTicketPurchase = (req, res) => {
     }
 };
 
-// Route lachuunuu akka hojjetuuf (Frontend kee kamiinuu yoo waame akka hin gannineef)
 app.post('/api/tickets', upload.single('screenshot'), handleTicketPurchase);
 app.post('/api/buy-ticket', upload.single('screenshot'), handleTicketPurchase);
 
@@ -235,16 +246,16 @@ app.post('/api/buy-ticket', upload.single('screenshot'), handleTicketPurchase);
 app.post('/api/tickets/status', (req, res) => {
     const { id, status } = req.body;
     db.run(`UPDATE tickets SET status = ? WHERE id = ?`, [status, id], function(err) {
-        if (err) res.status(500).json({ success: false, error: err.message });
-        else res.json({ success: true, message: `Ticket #${id} status ${status}-tti jijjiirameera.` });
+        if (err) return res.status(500).json({ success: false, error: err.message });
+        return res.json({ success: true, message: `Ticket #${id} status ${status}-tti jijjiirameera.` });
     });
 });
 
 // Get Winners
 app.get('/api/winners', (req, res) => {
     db.all("SELECT * FROM winners ORDER BY id DESC", (err, rows) => {
-        if (err) res.status(500).json({ success: false, error: err.message });
-        else res.json(rows);
+        if (err) return res.status(500).json({ success: false, error: err.message });
+        return res.json(rows || []);
     });
 });
 
@@ -253,8 +264,8 @@ app.post('/api/winners', (req, res) => {
     const { winner_name, prize_title, photo_url } = req.body;
     db.run(`INSERT INTO winners (winner_name, prize_title, photo_url, announced_date) VALUES (?, ?, ?, datetime('now'))`,
         [winner_name, prize_title, photo_url], function(err) {
-            if (err) res.status(500).json({ success: false, error: err.message });
-            else res.json({ success: true });
+            if (err) return res.status(500).json({ success: false, error: err.message });
+            return res.json({ success: true });
         });
 });
 
