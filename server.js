@@ -4,7 +4,7 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
-const TelegramBot = require('node-telegram-bot-api');
+const { TelegramBot } = require('node-telegram-bot-api');
 const multer = require('multer');
 const fs = require('fs');
 
