@@ -15,9 +15,9 @@
             --card-glass: rgba(18, 22, 31, 0.85);
             --border-glass: rgba(255, 255, 255, 0.08);
             --accent-gold: #ffb703;
-            --accent-yellow: #ffc107;
             --accent-green: #22c55e;
             --accent-red: #ef4444;
+            --accent-blue: #3b82f6;
             --text-light: #f8fafc;
             --text-muted: #94a3b8;
         }
@@ -38,34 +38,39 @@
             -webkit-backdrop-filter: blur(16px);
             border: 1px solid var(--border-glass);
             border-radius: 20px;
-            padding: 20px;
+            padding: 18px;
             margin: 15px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         }
 
-        /* Top Bar Header */
+        /* Top Navigation Header */
         .top-bar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 15px;
-            background: rgba(15, 20, 28, 0.9);
+            padding: 12px 18px;
+            background: rgba(15, 20, 28, 0.95);
             border-bottom: 1px solid var(--border-glass);
             position: sticky;
             top: 0;
             z-index: 100;
         }
         .admin-tag { font-size: 0.85rem; font-weight: 600; color: var(--accent-gold); display: flex; align-items: center; gap: 6px; }
+        
+        .nav-actions { display: flex; align-items: center; gap: 12px; }
+        .icon-btn { background: #1e2638; border: 1px solid var(--border-glass); color: #fff; padding: 8px 10px; border-radius: 10px; cursor: pointer; position: relative; }
+        .notif-badge { position: absolute; top: -4px; right: -4px; background: var(--accent-red); width: 10px; height: 10px; border-radius: 50%; }
+
         .lang-select {
             background: #1e2638; color: var(--text-light); border: 1px solid var(--border-glass);
-            padding: 6px 12px; border-radius: 10px; font-weight: bold; outline: none; cursor: pointer;
+            padding: 6px 10px; border-radius: 10px; font-weight: bold; outline: none; cursor: pointer; font-size: 0.8rem;
         }
 
-        /* Hero Banner (Car Image & Rating) */
+        /* Hero Banner Section */
         .hero-banner {
             position: relative;
             width: 100%;
-            height: 200px;
+            height: 190px;
             border-radius: 16px;
             overflow: hidden;
             background: url('https://images.unsplash.com/photo-1617814076367-b759c7d7e738?q=80&w=1000&auto=format&fit=crop') center/cover;
@@ -77,58 +82,63 @@
             padding: 15px;
         }
 
-        /* Countdown Box */
-        .countdown-grid {
-            display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; text-align: center; margin: 15px 0;
-        }
-        .time-box {
-            background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-glass);
-            padding: 10px 4px; border-radius: 12px;
-        }
-        .time-box h3 { color: var(--accent-gold); font-size: 1.2rem; }
-        .time-box small { font-size: 0.65rem; color: var(--text-muted); font-weight: bold; }
+        /* Countdown Grid */
+        .countdown-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; text-align: center; margin: 15px 0; }
+        .time-box { background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-glass); padding: 8px 4px; border-radius: 12px; }
+        .time-box h3 { color: var(--accent-gold); font-size: 1.1rem; }
+        .time-box small { font-size: 0.6rem; color: var(--text-muted); font-weight: bold; }
 
         /* Progress Bar */
         .progress-bar-bg { background: rgba(255, 255, 255, 0.1); height: 10px; border-radius: 5px; overflow: hidden; margin-top: 8px; }
         .progress-fill { background: linear-gradient(90deg, var(--accent-gold), var(--accent-green)); height: 100%; width: 0%; transition: 0.5s; }
 
-        /* 1-50 Multi Select Grid Selector */
+        /* Categories & Search */
+        .filter-tabs { display: flex; gap: 8px; margin-bottom: 12px; overflow-x: auto; padding-bottom: 4px; }
+        .cat-btn { padding: 6px 14px; background: #161c26; border: 1px solid var(--border-glass); color: var(--text-muted); border-radius: 20px; font-size: 0.75rem; font-weight: bold; cursor: pointer; white-space: nowrap; }
+        .cat-btn.active { background: var(--accent-gold); color: #000; }
+
+        /* Multi-Select Ticket Grid */
         .ticket-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; margin-top: 15px; max-height: 240px; overflow-y: auto; padding-right: 4px; }
         .t-btn {
             aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
             border-radius: 8px; font-weight: bold; font-size: 0.75rem;
-            background: #1a2230; color: #fff; border: 1px solid var(--border-glass); cursor: pointer;
+            background: #1a2230; color: #fff; border: 1px solid var(--border-glass); cursor: pointer; transition: 0.2s;
         }
         .t-btn.selected { background: var(--accent-gold); color: #000; border-color: var(--accent-gold); font-weight: 800; transform: scale(1.05); }
         .t-btn.taken { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); border-color: rgba(239, 68, 68, 0.4); text-decoration: line-through; cursor: not-allowed; }
 
-        /* Payment Option Copy Cards */
-        .pay-card {
-            background: #161c26; border: 1px solid var(--border-glass); border-radius: 14px; padding: 14px; margin-top: 10px;
-        }
-        .copy-box {
-            display: flex; justify-content: space-between; align-items: center;
-            background: #0f141c; padding: 10px 12px; border-radius: 8px; margin-top: 8px; border: 1px dashed rgba(255, 183, 3, 0.3);
-        }
-        .copy-btn { color: var(--accent-gold); cursor: pointer; font-weight: bold; padding: 4px 8px; border-radius: 6px; background: rgba(255, 183, 3, 0.1); }
+        /* Payment Card Layout */
+        .pay-card { background: #141923; border: 1px solid var(--border-glass); border-radius: 14px; padding: 12px; margin-top: 10px; }
+        .copy-box { display: flex; justify-content: space-between; align-items: center; background: #0a0d14; padding: 8px 12px; border-radius: 8px; margin-top: 6px; border: 1px dashed rgba(255, 183, 3, 0.3); }
+        .copy-btn { color: var(--accent-gold); cursor: pointer; font-weight: bold; padding: 4px 8px; border-radius: 6px; background: rgba(255, 183, 3, 0.1); font-size: 0.75rem; }
 
-        /* Forms */
+        /* Forms & Upload File */
         .form-group { margin-bottom: 12px; }
         .form-group label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; }
-        .form-group input {
-            width: 100%; padding: 12px; border-radius: 10px; background: #0f141c; border: 1px solid var(--border-glass); color: #fff; outline: none;
+        .form-group input { width: 100%; padding: 12px; border-radius: 10px; background: #0a0d14; border: 1px solid var(--border-glass); color: #fff; outline: none; }
+        
+        .file-upload-wrapper {
+            position: relative;
+            background: #0a0d14;
+            border: 2px dashed var(--accent-gold);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
         }
+        .file-upload-wrapper input[type="file"] { position: absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer; }
+
         .btn-action {
             width: 100%; padding: 14px; background: linear-gradient(90deg, #ffb703, #fb8500); color: #000;
             border: none; border-radius: 12px; font-size: 1rem; font-weight: 800; cursor: pointer; margin-top: 10px;
         }
 
-        /* Bottom Fixed Nav */
+        /* Bottom Fixed Navigation */
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(10, 12, 16, 0.95);
-            backdrop-filter: blur(12px); display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid var(--border-glass); z-index: 1000;
+            backdrop-filter: blur(12px); display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid var(--border-glass); z-index: 1000;
         }
-        .nav-item { color: var(--text-muted); border: none; background: none; font-size: 0.75rem; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .nav-item { color: var(--text-muted); border: none; background: none; font-size: 0.72rem; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; }
         .nav-item.active { color: var(--accent-gold); font-weight: bold; }
 
         .tab-content { display: none; }
@@ -137,19 +147,41 @@
         .badge { padding: 4px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: bold; }
         .badge-pending { background: rgba(234, 179, 8, 0.2); color: #fde047; }
         .badge-approved { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
+
+        /* Modal Overlay for Welcome & Notifications */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+        .modal-box { background: #161c26; border: 1px solid var(--accent-gold); border-radius: 20px; padding: 25px; width: 85%; max-width: 350px; text-align: center; }
     </style>
 </head>
 <body>
+
+    <div id="welcomeModal" class="modal-overlay">
+        <div class="modal-box">
+            <i class="fa-solid fa-gem" style="font-size: 2.5rem; color: var(--accent-gold);"></i>
+            <h2 style="margin-top: 10px; font-size: 1.2rem;" id="welcomeTitle">Baga Nagaan Dhuftan!</h2>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin: 10px 0 20px 0;" id="welcomeDesc">
+                Welcome to Hunde Lottery Bot. Please choose your language to continue.
+            </p>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <button class="btn-action" style="padding: 10px;" onclick="selectInitialLang('om')">Afaan Oromoo</button>
+                <button class="btn-action" style="padding: 10px; background: #3b82f6; color:#fff;" onclick="selectInitialLang('en')">English</button>
+                <button class="btn-action" style="padding: 10px; background: #22c55e; color:#fff;" onclick="selectInitialLang('am')">አማርኛ</button>
+            </div>
+        </div>
+    </div>
 
     <div class="top-bar">
         <div class="admin-tag">
             <i class="fa-solid fa-user-shield"></i> <span id="txtAdmin">Admin:</span> Hunde Tesfaye Jule
         </div>
-        <select class="lang-select" id="langSelect" onchange="changeLanguage(this.value)">
-            <option value="om">Afaan Oromoo</option>
-            <option value="en">English</option>
-            <option value="am">አማርኛ</option>
-        </select>
+        <div class="nav-actions">
+            <div class="icon-btn" onclick="openNotifications()"><i class="fa-solid fa-bell"></i><div class="notif-badge"></div></div>
+            <select class="lang-select" id="langSelect" onchange="changeLanguage(this.value)">
+                <option value="om">Afaan Oromoo</option>
+                <option value="en">English</option>
+                <option value="am">አማርኛ</option>
+            </select>
+        </div>
     </div>
 
     <div id="homeTab" class="tab-content active">
@@ -157,9 +189,9 @@
         <div class="glass-card" style="padding: 10px;">
             <div class="hero-banner">
                 <div class="hero-overlay">
-                    <span style="background:var(--accent-green); color:#000; padding:2px 8px; border-radius:6px; font-size:0.7rem; font-weight:bold;">ACTIVE</span>
-                    <h2 style="color:#fff; font-size:1.3rem; margin-top:4px;">BYD Yuan UP / Hunde Special</h2>
-                    <p style="font-size:0.8rem; color:var(--text-muted);" id="txtPrize">1st: <b>6000 ETB</b> | 2nd: <b>2000 ETB</b></p>
+                    <span style="background:var(--accent-green); color:#000; padding:2px 8px; border-radius:6px; font-size:0.7rem; font-weight:bold;" id="badgeStatus">ACTIVE LOTTERY</span>
+                    <h2 style="color:#fff; font-size:1.2rem; margin-top:4px;">BYD Yuan UP / Special Draw</h2>
+                    <p style="font-size:0.8rem; color:var(--text-muted);" id="txtPrize">1st: <b>13,000 ETB</b> | 2nd: <b>1,500 ETB</b> | 3rd: <b>600 ETB</b></p>
                 </div>
             </div>
 
@@ -172,7 +204,7 @@
 
             <div style="margin-top: 10px;">
                 <div style="display:flex; justify-content:space-between; font-size:0.8rem; font-weight:bold;">
-                    <span><span id="txtLeft">Tikettii Hafe</span>: <span id="countLeft">50</span> / 50</span>
+                    <span><span id="txtLeft">Tikettii Hafe</span>: <span id="countLeft">100</span> / <span id="maxTicketsDisplay">100</span></span>
                     <span id="percentText" style="color:var(--accent-gold);">0%</span>
                 </div>
                 <div class="progress-bar-bg"><div class="progress-fill" id="progressBar"></div></div>
@@ -180,18 +212,24 @@
         </div>
 
         <div class="glass-card">
-            <h3 style="font-size:1rem; color:var(--accent-gold); display:flex; align-items:center; gap:6px;">
-                <i class="fa-solid fa-ticket"></i> <span id="txtSelectTitle">Quick Multi-Ticket Selection (1-50)</span>
+            <div class="filter-tabs">
+                <button class="cat-btn active" onclick="filterCategory('all', this)" id="catAll">All Tickets (1-100)</button>
+                <button class="cat-btn" onclick="filterCategory('popular', this)" id="catPopular">Popular Numbers</button>
+                <button class="cat-btn" onclick="filterCategory('new', this)" id="catNew">New Available</button>
+            </div>
+
+            <h3 style="font-size:0.95rem; color:var(--accent-gold); display:flex; align-items:center; gap:6px;">
+                <i class="fa-solid fa-ticket"></i> <span id="txtSelectTitle">Quick Multi-Ticket Selection</span>
             </h3>
             <p style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;" id="txtTicketDesc">
-                Tiketti 1 = 200 Birr. Baay'ees walitti qabdee filachuu dandeessa:
+                Tiketti 1 = <b style="color: #fff;" id="pricePerTicket">200 ETB</b>. Baay'ee filatee kaffaltii iddo tokkotti raawwadhu:
             </p>
             
             <div class="ticket-grid" id="ticketGrid"></div>
 
-            <div style="display:flex; gap:15px; font-size:0.75rem; margin-top:10px; color:var(--text-muted);">
+            <div style="display:flex; gap:15px; font-size:0.75rem; margin-top:12px; color:var(--text-muted);">
                 <span><i class="fa-solid fa-square" style="color:var(--accent-gold);"></i> Selected</span>
-                <span><i class="fa-solid fa-square" style="color:var(--accent-red);"></i> Sold</span>
+                <span><i class="fa-solid fa-square" style="color:var(--accent-red);"></i> Taken</span>
                 <span><i class="fa-solid fa-square" style="color:#1a2230;"></i> Available</span>
             </div>
         </div>
@@ -202,7 +240,7 @@
             <div class="pay-card">
                 <div style="font-size:0.85rem; font-weight:bold;"><i class="fa-solid fa-building-columns"></i> Commercial Bank of Ethiopia (CBE)</div>
                 <div class="copy-box">
-                    <span style="font-size:0.85rem;">1000512022433 (Hunde Tesfaye)</span>
+                    <span style="font-size:0.85rem;">1000512022433 (Hunde Tesfaye Jule)</span>
                     <span class="copy-btn" onclick="copyText('1000512022433')"><i class="fa-solid fa-copy"></i> Copy</span>
                 </div>
             </div>
@@ -210,7 +248,7 @@
             <div class="pay-card">
                 <div style="font-size:0.85rem; font-weight:bold;"><i class="fa-solid fa-mobile-screen"></i> Telebirr</div>
                 <div class="copy-box">
-                    <span style="font-size:0.85rem;">0910020814 (Hunde Tesfaye)</span>
+                    <span style="font-size:0.85rem;">0910020814 (Hunde Tesfaye Jule)</span>
                     <span class="copy-btn" onclick="copyText('0910020814')"><i class="fa-solid fa-copy"></i> Copy</span>
                 </div>
             </div>
@@ -225,8 +263,12 @@
                     <input type="tel" id="phone" placeholder="09..." required>
                 </div>
                 <div class="form-group">
-                    <label id="lblScreenshot">Screenshot Payment (Image Link):</label>
-                    <input type="text" id="screenshot" placeholder="Linkii Screenshot kaffaltii upload goote galchi" required>
+                    <label id="lblScreenshot">Screenshot Kaffaltii Upload (Suuraa File):</label>
+                    <div class="file-upload-wrapper">
+                        <i class="fa-solid fa-cloud-arrow-up" style="font-size: 1.5rem; color: var(--accent-gold);"></i>
+                        <p id="fileNameDisplay" style="font-size:0.75rem; margin-top:5px; color:var(--text-muted);">Suuraa kaffaltii filachuuf as tuqi</p>
+                        <input type="file" id="screenshotFile" accept="image/*" required onchange="handleFileSelect(this)">
+                    </div>
                 </div>
                 <button type="submit" class="btn-action" id="btnSubmit"><i class="fa-solid fa-paper-plane"></i> Tiketti Bitadhu</button>
             </form>
@@ -259,16 +301,17 @@
             </div>
         </div>
         <div class="glass-card">
-            <h2 style="color:var(--accent-gold); font-size:1.1rem;"><i class="fa-solid fa-headset"></i> Support / Qunnamtii</h2>
-            <a href="https://t.me/Hunde_Tesfaye" target="_blank" style="display:inline-block; margin-top:10px; padding:10px 15px; background:#0088cc; color:#fff; border-radius:10px; text-decoration:none; font-weight:bold; font-size:0.85rem;">
-                <i class="fa-brands fa-telegram"></i> Direct Support Admin
+            <h2 style="color:var(--accent-gold); font-size:1.1rem;"><i class="fa-solid fa-headset"></i> In-App Direct Support</h2>
+            <p style="font-size:0.8rem; color:var(--text-muted); margin-top:5px;">Gaaffii ykn rakkoo yoo qabaattan Admin qunnamaa:</p>
+            <a href="https://t.me/Hunde_Tesfaye" target="_blank" style="display:inline-block; margin-top:12px; padding:12px 20px; background:#0088cc; color:#fff; border-radius:12px; text-decoration:none; font-weight:bold; font-size:0.85rem;">
+                <i class="fa-brands fa-telegram"></i> Direct Support Admin (Telegram)
             </a>
         </div>
     </div>
 
     <div class="bottom-nav">
         <button class="nav-item active" onclick="switchTab('homeTab', this)"><i class="fa-solid fa-house"></i> <span id="navHome">Home</span></button>
-        <button class="nav-item" onclick="switchTab('myTicketsTab', this)"><i class="fa-solid fa-ticket"></i> <span id="navTickets">My Tickets</span></button>
+        <button class="nav-item" onclick="switchTab('myTicketsTab', this)"><i class="fa-solid fa-ticket"></i> <span id="navTickets">Tickets</span></button>
         <button class="nav-item" onclick="switchTab('winnersTab', this)"><i class="fa-solid fa-award"></i> <span id="navWinners">Winners</span></button>
         <button class="nav-item" onclick="switchTab('refTab', this)"><i class="fa-solid fa-user-plus"></i> <span id="navRef">Referral</span></button>
     </div>
@@ -279,32 +322,40 @@
 
         let selectedTickets = [];
         let globalTickets = [];
+        let globalSettings = { max_tickets: 100, ticket_price: 200, prize_1st: 13000, prize_2nd: 1500, prize_3rd: 600 };
+        let base64Image = "";
 
         const dictionary = {
             om: {
-                admin: "Admin:", prize: "Carran 1ffaa: <b>6000 ETB</b> | 2ffaa: <b>2000 ETB</b>", left: "Tikettii Hafe",
-                selectTitle: "Quick Multi-Ticket Selection (1-50)", payHeader: "Kaffaltii & Screenshot Upload",
-                fullname: "Maqaa Guutuu:", phone: "Lakkoofsa Bilbilaa:", screenshot: "Screenshot Payment (Image Link):",
+                admin: "Admin:", prize: "Carran 1ffaa: <b>13,000 ETB</b> | 2ffaa: <b>1,500 ETB</b> | 3ffaa: <b>600 ETB</b>", left: "Tikettii Hafe",
+                selectTitle: "Quick Multi-Ticket Selection", payHeader: "Kaffaltii & Screenshot Upload",
+                fullname: "Maqaa Guutuu:", phone: "Lakkoofsa Bilbilaa:", screenshot: "Screenshot Kaffaltii Upload (Suuraa File):",
                 btnSubmit: "Tiketti Bitadhu", myTickets: "Tikettiiwwan Ko", winners: "Mo'attoota",
                 navHome: "Home", navTickets: "Tickets", navWinners: "Winners", navRef: "Referral"
             },
             en: {
-                admin: "Admin:", prize: "1st Prize: <b>6000 ETB</b> | 2nd Prize: <b>2000 ETB</b>", left: "Tickets Left",
-                selectTitle: "Quick Multi-Ticket Selection (1-50)", payHeader: "Payment & Screenshot Upload",
-                fullname: "Full Name:", phone: "Phone Number:", screenshot: "Payment Screenshot (Image Link):",
+                admin: "Admin:", prize: "1st Prize: <b>13,000 ETB</b> | 2nd: <b>1,500 ETB</b> | 3rd: <b>600 ETB</b>", left: "Tickets Left",
+                selectTitle: "Quick Multi-Ticket Selection", payHeader: "Payment & Screenshot Upload",
+                fullname: "Full Name:", phone: "Phone Number:", screenshot: "Payment Screenshot Upload (Image File):",
                 btnSubmit: "Buy Ticket", myTickets: "My Tickets", winners: "Winners",
                 navHome: "Home", navTickets: "Tickets", navWinners: "Winners", navRef: "Referral"
             },
             am: {
-                admin: "አስተዳዳሪ:", prize: "1ኛ ዕድል: <b>6000 ETB</b> | 2ኛ ዕድል: <b>2000 ETB</b>", left: "የቀሩ ቲኬቶች",
-                selectTitle: "ፈጣን የቲኬት አመራረጥ (1-50)", payHeader: "ክፍያ እና ስክሪንሾት ማስገቢያ",
-                fullname: "ሙሉ ስም:", phone: "ስልክ ቁጥር:", screenshot: "የክፍያ ስክሪንሾት (ምስል ሊንክ):",
+                admin: "አስተዳዳሪ:", prize: "1ኛ ዕድል: <b>13,000 ETB</b> | 2ኛ: <b>1,500 ETB</b> | 3ኛ: <b>600 ETB</b>", left: "የቀሩ ቲኬቶች",
+                selectTitle: "ፈጣን የቲኬት አመራረጥ", payHeader: "ክፍያ እና ስክሪንሾት ማስገቢያ",
+                fullname: "ሙሉ ስም:", phone: "ስልክ ቁጥር:", screenshot: "የክፍያ ስክሪንሾት ማስገቢያ (ምስል ፋይል):",
                 btnSubmit: "ቲኬት ቁረጥ", myTickets: "የኔ ቲኬቶች", winners: "አሸናፊዎች",
                 navHome: "መነሻ", navTickets: "ቲኬቶች", navWinners: "አሸናፊዎች", navRef: "ሪፈራል"
             }
         };
 
+        function selectInitialLang(lang) {
+            changeLanguage(lang);
+            document.getElementById('welcomeModal').style.display = 'none';
+        }
+
         function changeLanguage(lang) {
+            document.getElementById('langSelect').value = lang;
             const d = dictionary[lang];
             document.getElementById('txtAdmin').textContent = d.admin;
             document.getElementById('txtPrize').innerHTML = d.prize;
@@ -335,18 +386,44 @@
             alert("Copy ta'eera: " + txt);
         }
 
+        function handleFileSelect(input) {
+            const file = input.files[0];
+            if (file) {
+                document.getElementById('fileNameDisplay').textContent = file.name;
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    base64Image = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
         async function loadAppData() {
             try {
+                // Fetch Settings dynamic
+                const resSettings = await fetch('/api/settings');
+                if (resSettings.ok) globalSettings = await resSettings.json();
+
+                document.getElementById('maxTicketsDisplay').textContent = globalSettings.max_tickets || 100;
+                document.getElementById('pricePerTicket').textContent = (globalSettings.ticket_price || 200) + " ETB";
+
                 const res = await fetch('/api/tickets');
                 globalTickets = await res.json();
-                renderGrid();
+                
+                renderGrid('all');
                 renderProgress();
                 renderMyTickets();
                 renderWinners();
             } catch (err) { console.error(err); }
         }
 
-        function renderGrid() {
+        function filterCategory(type, element) {
+            document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+            element.classList.add('active');
+            renderGrid(type);
+        }
+
+        function renderGrid(filterType) {
             const grid = document.getElementById('ticketGrid');
             grid.innerHTML = '';
             let taken = [];
@@ -357,13 +434,19 @@
                 }
             });
 
-            for (let i = 1; i <= 50; i++) {
+            const max = globalSettings.max_tickets || 100;
+            for (let i = 1; i <= max; i++) {
+                if (filterType === 'new' && taken.includes(i)) continue;
+                if (filterType === 'popular' && i > 20) continue;
+
                 const isTaken = taken.includes(i);
                 const btn = document.createElement('div');
                 btn.className = `t-btn ${isTaken ? 'taken' : ''}`;
                 btn.textContent = String(i).padStart(3, '0');
 
                 if (!isTaken) {
+                    if (selectedTickets.includes(i)) btn.classList.add('selected');
+
                     btn.onclick = () => {
                         if (selectedTickets.includes(i)) {
                             selectedTickets = selectedTickets.filter(n => n !== i);
@@ -381,8 +464,9 @@
         function renderProgress() {
             let totalTaken = 0;
             globalTickets.forEach(t => { if (t.ticket_numbers) totalTaken += t.ticket_numbers.split(',').length; });
-            const left = Math.max(0, 50 - totalTaken);
-            const percent = Math.min(100, Math.round((totalTaken / 50) * 100));
+            const max = globalSettings.max_tickets || 100;
+            const left = Math.max(0, max - totalTaken);
+            const percent = Math.min(100, Math.round((totalTaken / max) * 100));
 
             document.getElementById('countLeft').textContent = left;
             document.getElementById('percentText').textContent = percent + '%';
@@ -402,24 +486,24 @@
 
             myTickets.forEach(t => {
                 container.innerHTML += `
-                    <div id="pass_${t.id}" style="background:#161c26; padding:12px; border-radius:12px; margin-bottom:10px; border:1px solid var(--border-glass);">
+                    <div id="pass_${t.id}" style="background:#141923; padding:14px; border-radius:14px; margin-bottom:10px; border:1px solid var(--border-glass);">
                         <div style="display:flex; justify-content:space-between;">
-                            <b>Ticket ID: #${t.id}</b>
+                            <b>Ticket Pass ID: #${t.id}</b>
                             <span class="badge ${t.status === 'Approved' ? 'badge-approved' : 'badge-pending'}">${t.status}</span>
                         </div>
                         <p style="margin-top:6px; font-size:0.85rem;">Nums: <b style="color:var(--accent-gold);">${t.ticket_numbers}</b></p>
                         ${t.status === 'Approved' ? `
-                            <button onclick="downloadPDF('pass_${t.id}')" style="margin-top:8px; padding:6px 10px; background:var(--accent-gold); border:none; border-radius:6px; font-weight:bold; cursor:pointer; font-size:0.75rem;">
-                                <i class="fa-solid fa-file-pdf"></i> Ticket Pass PDF
+                            <button onclick="downloadPDF('pass_${t.id}')" style="margin-top:10px; padding:6px 12px; background:var(--accent-gold); border:none; border-radius:6px; font-weight:bold; cursor:pointer; font-size:0.75rem;">
+                                <i class="fa-solid fa-file-pdf"></i> Download Ticket PDF
                             </button>
-                        ` : ''}
+                        ` : '<p style="font-size:0.75rem; color:var(--text-muted); margin-top:5px;">Admin verify eegaa jira...</p>'}
                     </div>
                 `;
             });
         }
 
         function downloadPDF(id) {
-            html2pdf().from(document.getElementById(id)).save('Hunde_Lottery.pdf');
+            html2pdf().from(document.getElementById(id)).save('Hunde_Lottery_Pass.pdf');
         }
 
         async function renderWinners() {
@@ -430,7 +514,7 @@
                 container.innerHTML = '';
                 winners.forEach(w => {
                     container.innerHTML += `
-                        <div style="background:#161c26; padding:10px 14px; border-radius:10px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+                        <div style="background:#141923; padding:12px 14px; border-radius:12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
                             <div><b>${w.name}</b> (Ticket #${w.ticket})</div>
                             <div style="color:var(--accent-green); font-weight:bold;">${w.prize}</div>
                         </div>
@@ -447,6 +531,11 @@
                 msg.textContent = "Maaloo lakkoofsa tiketti filadhaa!";
                 return;
             }
+            if (!base64Image) {
+                msg.style.color = 'var(--accent-red)';
+                msg.textContent = "Maaloo suuraa kaffaltii upload godhaa!";
+                return;
+            }
 
             msg.style.color = 'var(--accent-gold)';
             msg.textContent = "Ergamaa jira...";
@@ -458,21 +547,26 @@
                 phone: document.getElementById('phone').value,
                 ticket_numbers: selectedTickets.join(','),
                 payment_method: 'CBE / Telebirr',
-                screenshot: document.getElementById('screenshot').value
+                screenshot: base64Image
             };
 
-            const res = await fetch('/api/tickets', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const data = await res.json();
+            try {
+                const res = await fetch('/api/tickets', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
 
-            if (data.success) {
-                msg.style.color = 'var(--accent-green)';
-                msg.textContent = "Milkaa'inaan ergameera! Approval Admin eegaa jira.";
-                selectedTickets = [];
-                loadAppData();
+                if (data.success) {
+                    msg.style.color = 'var(--accent-green)';
+                    msg.textContent = "Milkaa'inaan ergameera! Approval Admin eegaa jira.";
+                    selectedTickets = [];
+                    loadAppData();
+                }
+            } catch (err) {
+                msg.style.color = 'var(--accent-red)';
+                msg.textContent = "Error uumameera!";
             }
         });
 
@@ -490,11 +584,11 @@
             }, 1000);
         }
 
-        // Detect user language from Telegram
-        const tgLang = tg.initDataUnsafe?.user?.language_code;
-        if (tgLang === 'am' || tgLang === 'om') changeLanguage(tgLang);
-        else changeLanguage('om');
+        function openNotifications() {
+            alert("Notification: Marsaan tikettii haaraa banameera! Kaffaltii kaffaltaniin suuraa upload gochuu hin dagatinaa.");
+        }
 
+        // Auto load initial data
         loadAppData();
         startCountdown();
     </script>
