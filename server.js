@@ -1,17 +1,30 @@
+require('dotenv').config();
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 const TelegramBot = require('node-telegram-bot-api');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ==========================================
-// 1. MIDDLEWARES & STATIC FILES
+// 1. MIDDLEWARES, SECURITY & STATIC FILES
 // ==========================================
 app.use(express.json());
+app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Anti-Spam Rate Limiting (API Security)
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // Daqiiqaa 15
+    max: 100, // IP tokko irraa Request 100 qofa
+    message: { success: false, message: "Request baay'ee ergitaniirtu! Maaloo daqiiqaa 15 booda deebi'aa yaalaa." }
+});
+app.use('/api/', limiter);
+
+// Root Route
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -21,7 +34,7 @@ app.get('/', (req, res) => {
 // ==========================================
 const TOKEN = process.env.BOT_TOKEN || 'YOUR_TELEGRAM_BOT_TOKEN_HERE';
 const bot = new TelegramBot(TOKEN, { polling: true });
-const WEB_APP_URL = 'https://milki-app.onrender.com';
+const WEB_APP_URL = process.env.WEB_APP_URL || 'https://milki-app.onrender.com';
 
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
@@ -64,7 +77,7 @@ const db = new sqlite3.Database('./database.db', (err) => {
     }
 });
 
-// Create Required Tables
+// Create Required Tables & Seed Data
 db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS settings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,6 +85,9 @@ db.serialize(() => {
         max_tickets INTEGER DEFAULT 50,
         prize_1st INTEGER DEFAULT 6000,
         prize_2nd INTEGER DEFAULT 2000,
+        admin_name TEXT DEFAULT 'Hunde Tesfaye Jule',
+        cbe_acc TEXT DEFAULT '1000512022433',
+        telebirr_acc TEXT DEFAULT '0910020814',
         end_date TEXT
     )`);
 
@@ -100,7 +116,8 @@ db.serialize(() => {
     db.get("SELECT COUNT(*) as count FROM settings", (err, row) => {
         if (row && row.count === 0) {
             const defaultDate = new Date(Date.now() + 86400000 * 3).toISOString();
-            db.run(`INSERT INTO settings (ticket_price, max_tickets, prize_1st, prize_2nd, end_date) VALUES (200, 50, 6000, 2000, ?)`, [defaultDate]);
+            db.run(`INSERT INTO settings (ticket_price, max_tickets, prize_1st, prize_2nd, admin_name, cbe_acc, telebirr_acc, end_date) 
+                    VALUES (200, 50, 6000, 2000, 'Hunde Tesfaye Jule', '1000512022433', '0910020814', ?)`, [defaultDate]);
         }
     });
 });
@@ -126,7 +143,7 @@ app.post('/api/admin/login', (req, res) => {
 // Get Settings
 app.get('/api/settings', (req, res) => {
     db.get("SELECT * FROM settings ORDER BY id DESC LIMIT 1", (err, row) => {
-        if (err) res.status(500).json({ error: err.message });
+        if (err) res.status(500).json({ success: false, error: err.message });
         else res.json(row);
     });
 });
@@ -136,7 +153,7 @@ app.post('/api/settings', (req, res) => {
     const { ticket_price, max_tickets, prize_1st, prize_2nd, end_date } = req.body;
     db.run(`UPDATE settings SET ticket_price = ?, max_tickets = ?, prize_1st = ?, prize_2nd = ?, end_date = ? WHERE id = 1`,
         [ticket_price, max_tickets, prize_1st, prize_2nd, end_date], function(err) {
-            if (err) res.status(500).json({ error: err.message });
+            if (err) res.status(500).json({ success: false, error: err.message });
             else res.json({ success: true });
         });
 });
@@ -144,7 +161,7 @@ app.post('/api/settings', (req, res) => {
 // Get All Tickets
 app.get('/api/tickets', (req, res) => {
     db.all("SELECT * FROM tickets ORDER BY id DESC", (err, rows) => {
-        if (err) res.status(500).json({ error: err.message });
+        if (err) res.status(500).json({ success: false, error: err.message });
         else res.json(rows);
     });
 });
@@ -152,10 +169,22 @@ app.get('/api/tickets', (req, res) => {
 // Create New Ticket Purchase
 app.post('/api/tickets', (req, res) => {
     const { user_id, username, fullname, phone, ticket_numbers, payment_method, screenshot } = req.body;
+
+    if (!fullname || !phone || !ticket_numbers || !screenshot) {
+        return res.status(400).json({ success: false, message: "Maaloo odeeffannoo guutuu galchaa!" });
+    }
+
     db.run(`INSERT INTO tickets (user_id, username, fullname, phone, ticket_numbers, payment_method, screenshot) VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [user_id, username, fullname, phone, ticket_numbers, payment_method, screenshot], function(err) {
-            if (err) res.status(500).json({ error: err.message });
-            else res.json({ success: true, ticketId: this.lastID });
+            if (err) {
+                res.status(500).json({ success: false, error: err.message });
+            } else {
+                res.json({ 
+                    success: true, 
+                    message: "Tikettiin keessan milkaa'inaan ergameera. Approval Admin eegaa jira!", 
+                    ticketId: this.lastID 
+                });
+            }
         });
 });
 
@@ -163,15 +192,15 @@ app.post('/api/tickets', (req, res) => {
 app.post('/api/tickets/status', (req, res) => {
     const { id, status } = req.body;
     db.run(`UPDATE tickets SET status = ? WHERE id = ?`, [status, id], function(err) {
-        if (err) res.status(500).json({ error: err.message });
-        else res.json({ success: true });
+        if (err) res.status(500).json({ success: false, error: err.message });
+        else res.json({ success: true, message: `Ticket #${id} status ${status}-tti jijjiirameera.` });
     });
 });
 
 // Get Winners
 app.get('/api/winners', (req, res) => {
     db.all("SELECT * FROM winners ORDER BY id DESC", (err, rows) => {
-        if (err) res.status(500).json({ error: err.message });
+        if (err) res.status(500).json({ success: false, error: err.message });
         else res.json(rows);
     });
 });
@@ -181,7 +210,7 @@ app.post('/api/winners', (req, res) => {
     const { winner_name, prize_title, photo_url } = req.body;
     db.run(`INSERT INTO winners (winner_name, prize_title, photo_url, announced_date) VALUES (?, ?, ?, datetime('now'))`,
         [winner_name, prize_title, photo_url], function(err) {
-            if (err) res.status(500).json({ error: err.message });
+            if (err) res.status(500).json({ success: false, error: err.message });
             else res.json({ success: true });
         });
 });
@@ -192,97 +221,3 @@ app.post('/api/winners', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server and Telegram Bot are running smoothly on port ${PORT}`);
 });
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const rateLimit = require('express-rate-limit');
-const path = require('path');
-
-const app = express();
-app.use(express.json());
-app.use(cors());
-app.use(express.static(path.join(__dirname, 'public')));
-
-// 🛑 SECURITY & ANTI-HACKER RATE LIMITING (Spam Dhowwuuf)
-const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // Daqiiqaa 15
-    max: 100, // IP tokko irraa request 100 qofa
-    message: { success: false, message: "Request baay'ee ergitaniirtu! Maaloo daqiiqaa 15 booda deebi'aa yaalaa." }
-});
-app.use('/api/', limiter);
-
-// Database Fake Storage (Production irratti MongoDB/PostgreSQL fayyadamta)
-let tickets = [];
-let settings = {
-    ticket_price: 200,
-    max_tickets: 50,
-    prize_1st: 6000,
-    prize_2nd: 2000,
-    admin_name: "Hunde Tesfaye Jule",
-    cbe_acc: "1000512022433",
-    telebirr_acc: "0910020814",
-    end_date: new Date(Date.now() + 86400000 * 3).toISOString() // Guyyaa 3 dabalata
-};
-
-let winners = [
-    { name: "Abebe K.", ticket: "12", prize: "6000 ETB", date: "2026-07-20" },
-    { name: "Chala T.", ticket: "05", prize: "2000 ETB", date: "2026-07-20" }
-];
-
-// --- ROUTES --- //
-app.get('/api/settings', (req, res) => res.json(settings));
-app.get('/api/tickets', (req, res) => res.json(tickets));
-app.get('/api/winners', (req, res) => res.json(winners));
-
-// Ticket Bituu API
-app.post('/api/tickets', (req, res) => {
-    const { user_id, username, fullname, phone, ticket_numbers, payment_method, screenshot } = req.body;
-    
-    if (!fullname || !phone || !ticket_numbers || !screenshot) {
-        return res.status(400).json({ success: false, message: "Maaloo odeeffannoo guutuu galchaa!" });
-    }
-
-    const newTicket = {
-        id: tickets.length + 1,
-        user_id,
-        username,
-        fullname,
-        phone,
-        ticket_numbers,
-        payment_method,
-        screenshot,
-        status: 'Pending', // Admin approval eega
-        created_at: new Date()
-    };
-
-    tickets.push(newTicket);
-    res.json({ success: true, message: "Tikettiin keessan milkaa'inaan ergameera. Approval Admin eegaa jira!", ticket: newTicket });
-});
-
-// Admin Approval API
-app.post('/api/tickets/status', (req, res) => {
-    const { id, status } = req.body;
-    const ticket = tickets.find(t => t.id === id);
-    if (ticket) {
-        ticket.status = status;
-        res.json({ success: true, message: `Ticket #${id} status ${status}-tti jijjiirameera.` });
-    } else {
-        res.status(404).json({ success: false, message: "Ticket hin argamne." });
-    }
-});
-
-// Admin Login
-app.post('/api/admin/login', (req, res) => {
-    const { username, password } = req.body;
-    const adminUser = process.env.ADMIN_USERNAME || 'admin';
-    const adminPass = process.env.ADMIN_PASSWORD || 'password123';
-
-    if (username === adminUser && password === adminPass) {
-        res.json({ success: true, message: "Seensii Milkaa'inaa!" });
-    } else {
-        res.status(401).json({ success: false, message: "Username ykn Password Dogoggoraa!" });
-    }
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running smoothly on port ${PORT}...`));
