@@ -66,7 +66,6 @@
             padding: 6px 10px; border-radius: 10px; font-weight: bold; outline: none; cursor: pointer; font-size: 0.8rem;
         }
 
-        /* HERO BANNER */
         .hero-banner {
             position: relative;
             width: 100%;
@@ -143,18 +142,17 @@
         .cat-btn { padding: 6px 14px; background: #161c26; border: 1px solid var(--border-glass); color: var(--text-muted); border-radius: 20px; font-size: 0.75rem; font-weight: bold; cursor: pointer; white-space: nowrap; }
         .cat-btn.active { background: var(--accent-gold); color: #000; }
 
-        /* GRID STYLING NAMA 50 FOR AUTO NAME REPLACEMENT */
         .ticket-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 15px; max-height: 420px; overflow-y: auto; padding-right: 4px; }
         .t-btn {
-            aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
-            border-radius: 8px; font-weight: bold; font-size: 0.75rem;
+            aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            border-radius: 8px; font-weight: bold; font-size: 0.8rem;
             background: #1a2230; color: #fff; border: 1px solid var(--border-glass); cursor: pointer; transition: 0.2s;
             text-align: center; word-break: break-word; padding: 2px;
         }
         .t-btn.selected { background: var(--accent-gold); color: #000; border-color: var(--accent-gold); font-weight: 800; transform: scale(1.05); }
         
         .t-btn.taken { 
-            background: rgba(34, 197, 94, 0.25); 
+            background: rgba(34, 197, 94, 0.2); 
             color: #4ade80; 
             border-color: #22c55e; 
             cursor: not-allowed; 
@@ -195,10 +193,6 @@
 
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-
-        .badge { padding: 4px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: bold; }
-        .badge-pending { background: rgba(234, 179, 8, 0.2); color: #fde047; }
-        .badge-approved { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
 
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 2000; }
         .modal-box { background: #161c26; border: 1px solid var(--accent-gold); border-radius: 20px; padding: 25px; width: 85%; max-width: 350px; text-align: center; }
@@ -398,13 +392,13 @@
         let selectedTickets = [];
         let globalTickets = [];
         let globalSettings = { max_tickets: 50, ticket_price: 200, prize_1st: 6000, prize_2nd: 1500, prize_3rd: 500, cbe_acc: "1000512022433", telebirr_acc: "0910020814" };
-        let popularNumbers = [];
+        let currentFilter = 'all';
         let currentLang = 'om';
 
         const dictionary = {
             om: {
                 admin: "Admin:", 
-                catAll: "Tikettii Hundumaa (1-50)", catPopular: "Lakkoofsota Bebekamoo (10)", catNew: "Haaraa Banaman",
+                catAll: "Tikettii Hundumaa (1-50)", catPopular: "Lakkoofsota Bebekamoo", catNew: "Haaraa Banaman",
                 selectTitle: "Quick Multi-Ticket Selection", ticketDesc: "Tiketti 1 = <b style='color:#fff;'>200 ETB</b>. Baay'ee filatee kaffaltii iddo tokkotti raawwadhu:",
                 payHeader: "Kaffaltii & Screenshot Upload",
                 fullname: "Maqaa Guutuu:", phone: "Lakkoofsa Bilbilaa:", paymentMethod: "Mala Kaffaltii:", screenshot: "Screenshot Kaffaltii Upload (Suuraa File):",
@@ -419,7 +413,7 @@
             },
             en: {
                 admin: "Admin:", 
-                catAll: "All Tickets (1-50)", catPopular: "Popular Numbers (10)", catNew: "New Available",
+                catAll: "All Tickets (1-50)", catPopular: "Popular Numbers", catNew: "New Available",
                 selectTitle: "Quick Multi-Ticket Selection", ticketDesc: "1 Ticket = <b style='color:#fff;'>200 ETB</b>. Select multiple and pay at once:",
                 payHeader: "Payment & Screenshot Upload",
                 fullname: "Full Name:", phone: "Phone Number:", paymentMethod: "Payment Method:", screenshot: "Payment Screenshot Upload (Image File):",
@@ -434,7 +428,7 @@
             },
             am: {
                 admin: "አስተዳዳሪ:", 
-                catAll: "ሁሉም ቲኬቶች (1-50)", catPopular: "ታዋቂ ቁጥሮች (10)", catNew: "አዲስ የተከፈቱ",
+                catAll: "ሁሉም ቲኬቶች (1-50)", catPopular: "ታዋቂ ቁጥሮች", catNew: "አዲስ የተከፈቱ",
                 selectTitle: "ፈጣን የቲኬት አመራረጥ", ticketDesc: "1 ቲኬት = <b style='color:#fff;'>200 ETB</b>. ብዙ መርጠው በአንድ ላይ ይክፈሉ:",
                 payHeader: "ክፍያ እና ስክሪንሾት ማስገቢያ",
                 fullname: "ሙሉ ስም:", phone: "ስልክ ቁጥር:", paymentMethod: "የክፍያ መንገድ:", screenshot: "የክፍያ ስክሪንሾት ማስገቢያ (ምስል ፋይል):",
@@ -449,22 +443,18 @@
             }
         };
 
-        // AUTO-DETECT LANGUAGE FROM TELEGRAM BOT / URL PARAMS
         document.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
             const langParam = urlParams.get('lang');
 
             if (langParam && dictionary[langParam]) {
-                // Yoo Bot irraa afaan ergame dhufe Modal sana dhoksi, afaanicha hojiirra oolchi
                 document.getElementById('welcomeModal').style.display = 'none';
                 changeLanguage(langParam);
             } else {
-                // Yoo URL irra afaan hin jirre Modal saaqi
                 document.getElementById('welcomeModal').style.display = 'flex';
                 changeLanguage('om');
             }
 
-            // Telegram user details autoguutuu
             if (tg?.initDataUnsafe?.user) {
                 const u = tg.initDataUnsafe.user;
                 if (u.first_name) {
@@ -485,7 +475,7 @@
             document.getElementById('langSelect').value = lang;
             const d = dictionary[lang];
             document.getElementById('txtAdmin').textContent = d.admin;
-            document.getElementById('txtLeft').textContent = d.left || "Tikettii Hafe";
+            document.getElementById('txtLeft').textContent = "Tikettii Hafe";
             
             document.getElementById('catAll').textContent = d.catAll;
             document.getElementById('catPopular').textContent = d.catPopular;
@@ -549,7 +539,7 @@
                     if(globalSettings.telebirr_acc) document.getElementById('teleAcc').textContent = `${globalSettings.telebirr_acc} (Hunde Tesfaye Jule)`;
                 }
 
-                document.getElementById('maxTicketsDisplay').textContent = 50;
+                document.getElementById('maxTicketsDisplay').textContent = globalSettings.max_tickets || 50;
                 document.getElementById('pricePerTicket').textContent = (globalSettings.ticket_price || 200) + " ETB";
 
                 const res = await fetch('/api/tickets');
@@ -557,172 +547,143 @@
                     globalTickets = await res.json();
                 }
 
-                renderGrid('all');
+                renderGrid(currentFilter);
                 renderProgress();
-                renderMyTickets();
-                renderWinners();
             } catch (err) { console.error("Data loading error:", err); }
         }
 
         function filterCategory(type, element) {
+            currentFilter = type;
             document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
             element.classList.add('active');
             renderGrid(type);
         }
 
-        // GRID NAMA 50 FI APPROVE TA'NAAN MAQAA FIRST NAME MUL'ISUU
-        function renderGrid(filterType) {
-            const grid = document.getElementById('ticketGrid');
-            grid.innerHTML = '';
-            
-            let takenMap = {};
-            
-            globalTickets.forEach(t => {
-                if (t.ticket_numbers && (t.status === 'Approved' || t.status === 'approved')) {
-                    const nums = String(t.ticket_numbers).split(',').map(n => parseInt(n.trim()));
-                    const firstName = t.fullname ? t.fullname.trim().split(' ')[0] : 'Taken';
-                    
-                    nums.forEach(n => {
-                        takenMap[n] = firstName;
-                    });
-                }
-            });
-
-            for (let i = 1; i <= 50; i++) {
-                if (filterType === 'popular' && !popularNumbers.includes(i)) continue;
-                if (filterType === 'new' && takenMap[i]) continue;
-
-                const btn = document.createElement('button');
-                btn.className = 't-btn';
-
-                if (takenMap[i]) {
-                    btn.classList.add('taken');
-                    btn.textContent = takenMap[i]; // Maqaa nama bitate agarsiisi
-                } else {
-                    btn.textContent = i;
-                    if (selectedTickets.includes(i)) btn.classList.add('selected');
-                    btn.onclick = () => toggleTicket(i, btn);
-                }
-                grid.appendChild(btn);
-            }
-        }
-
-        function toggleTicket(num, btn) {
-            if (selectedTickets.includes(num)) {
-                selectedTickets = selectedTickets.filter(n => n !== num);
+        function toggleTicketSelect(num, btn) {
+            const index = selectedTickets.indexOf(num);
+            if (index > -1) {
+                selectedTickets.splice(index, 1);
                 btn.classList.remove('selected');
             } else {
                 selectedTickets.push(num);
                 btn.classList.add('selected');
             }
-            document.getElementById('selectedDisplay').textContent = selectedTickets.length > 0 ? selectedTickets.join(', ') : 'Hintaane';
+            updateSelectedDisplay();
+        }
+
+        function updateSelectedDisplay() {
+            const disp = document.getElementById('selectedDisplay');
+            if (selectedTickets.length === 0) {
+                disp.textContent = "Hintaane";
+            } else {
+                disp.textContent = selectedTickets.sort((a,b) => a - b).join(', ');
+            }
+        }
+
+        function renderGrid(filterType) {
+            const grid = document.getElementById('ticketGrid');
+            grid.innerHTML = '';
+            
+            const max = globalSettings.max_tickets || 50;
+            
+            for (let i = 1; i <= max; i++) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.classList.add('t-btn');
+
+                const takenTicket = globalTickets.find(t => Number(t.ticket_number) === i && (t.status === 'sold' || t.status === 'pending'));
+
+                if (takenTicket) {
+                    btn.classList.add('taken');
+                    const name = takenTicket.buyer_name || 'Qabameera';
+                    btn.innerHTML = `${i}<br><small style="font-size:0.55rem; opacity:0.9;">${name}</small>`;
+                    btn.disabled = true;
+                } else {
+                    btn.textContent = i;
+                    if (selectedTickets.includes(i)) btn.classList.add('selected');
+                    btn.onclick = () => toggleTicketSelect(i, btn);
+                }
+
+                if (filterType === 'new' && takenTicket) continue;
+                grid.appendChild(btn);
+            }
         }
 
         function renderProgress() {
-            let takenCount = 0;
-            globalTickets.forEach(t => {
-                if (t.status === 'Approved' || t.status === 'approved') {
-                    const nums = String(t.ticket_numbers).split(',');
-                    takenCount += nums.length;
-                }
-            });
-            const left = Math.max(0, 50 - takenCount);
-            const percent = Math.round((takenCount / 50) * 100);
-
+            const soldCount = globalTickets.filter(t => t.status === 'sold' || t.status === 'pending').length;
+            const max = globalSettings.max_tickets || 50;
+            const left = max - soldCount;
+            
             document.getElementById('countLeft').textContent = left;
+            const percent = Math.round((soldCount / max) * 100);
             document.getElementById('percentText').textContent = percent + '%';
             document.getElementById('progressBar').style.width = percent + '%';
         }
 
-        async function submitForm(e) {
-            e.preventDefault();
-            const msg = document.getElementById('msgSubmit');
+        async function submitForm(event) {
+            event.preventDefault();
+            const msgEl = document.getElementById('msgSubmit');
 
             if (selectedTickets.length === 0) {
-                alert("Maaloo jalqaba tikettii kamiyyuu filadhu!");
+                alert("Maaloo dura tiketti tokko ykn isaa ol filadhu!");
                 return;
             }
 
             const formData = new FormData();
-            formData.append('user_id', tg?.initDataUnsafe?.user?.id || 'web_user');
-            formData.append('username', tg?.initDataUnsafe?.user?.username || '');
             formData.append('fullname', document.getElementById('fullname').value);
             formData.append('phone', document.getElementById('phone').value);
-            formData.append('ticket_numbers', selectedTickets.join(','));
-            formData.append('payment_method', document.getElementById('paymentMethod').value);
-            formData.append('screenshot', document.getElementById('screenshotFile').files[0]);
-
-            msg.style.color = '#ffb703';
-            msg.textContent = "Ergamaa jira, maaloo eegaa...";
+            formData.append('paymentMethod', document.getElementById('paymentMethod').value);
+            formData.append('tickets', JSON.stringify(selectedTickets));
+            
+            const fileInput = document.getElementById('screenshotFile');
+            if (fileInput.files[0]) {
+                formData.append('screenshot', fileInput.files[0]);
+            }
+            if (tg?.initDataUnsafe?.user?.id) {
+                formData.append('telegram_id', tg.initDataUnsafe.user.id);
+            }
 
             try {
-                const res = await fetch('/api/tickets', {
+                msgEl.style.color = 'var(--accent-gold)';
+                msgEl.textContent = "Kaffaltii kee ergaa jira, eegi...";
+
+                const res = await fetch('/api/buy-ticket', {
                     method: 'POST',
                     body: formData
                 });
+
                 const data = await res.json();
 
-                if (data.success) {
-                    msg.style.color = '#22c55e';
-                    msg.textContent = data.message || "Tikettiin milkaa'inaan ergameera!";
+                if (res.ok && data.success) {
+                    msgEl.style.color = 'var(--accent-green)';
+                    msgEl.textContent = "Tikettiiwwan keessan milkaa'inaan qabamaniiru!";
                     selectedTickets = [];
-                    document.getElementById('selectedDisplay').textContent = 'Hintaane';
-                    document.getElementById('lotteryForm').reset();
-                    document.getElementById('fileNameDisplay').textContent = "Suuraa kaffaltii filachuuf as tuqi";
+                    updateSelectedDisplay();
                     loadAppData();
                 } else {
-                    msg.style.color = '#ef4444';
-                    msg.textContent = data.message || "Dogoggorri uumameera!";
+                    msgEl.style.color = 'var(--accent-red)';
+                    msgEl.textContent = data.message || "Erguu irratti dogoggorri uumameera.";
                 }
             } catch (err) {
-                msg.style.color = '#ef4444';
-                msg.textContent = "Server connection error!";
+                console.error(err);
+                msgEl.style.color = 'var(--accent-red)';
+                msgEl.textContent = "Network error: Backend server qunnamuu dadhabe.";
             }
         }
 
-        function renderMyTickets() {
-            const container = document.getElementById('myTicketsContainer');
-            const userId = tg?.initDataUnsafe?.user?.id || 'web_user';
-            const userTickets = globalTickets.filter(t => String(t.user_id) === String(userId));
-
-            if (userTickets.length === 0) {
-                container.innerHTML = `<p style="font-size:0.85rem; color:var(--text-muted);">Tikettii bitattan hin jiru.</p>`;
-                return;
-            }
-
-            container.innerHTML = userTickets.map(t => `
-                <div style="background:#0a0d14; padding:12px; border-radius:10px; margin-bottom:10px; border:1px solid var(--border-glass);">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <strong>Tikettii: #${t.ticket_numbers}</strong>
-                        <span class="badge ${t.status === 'Approved' ? 'badge-approved' : 'badge-pending'}">${t.status}</span>
-                    </div>
-                    <small style="color:var(--text-muted); display:block; margin-top:4px;">Kaffaltii: ${t.payment_method}</small>
-                </div>
-            `).join('');
-        }
-
-        async function renderWinners() {
-            const container = document.getElementById('winnersContainer');
+        // AUTO REAL-TIME REFRESH SECONDI 4 HUNDAATTI
+        setInterval(async () => {
             try {
-                const res = await fetch('/api/winners');
+                const res = await fetch('/api/tickets');
                 if (res.ok) {
-                    const winners = await res.json();
-                    if (winners.length === 0) {
-                        container.innerHTML = `<p style="font-size:0.85rem; color:var(--text-muted);">Mo'attoonni ammaan tana hin jiran.</p>`;
-                        return;
-                    }
-                    container.innerHTML = winners.map(w => `
-                        <div style="background:#0a0d14; padding:10px; border-radius:10px; margin-bottom:10px; display:flex; align-items:center; gap:10px; border:1px solid var(--border-glass);">
-                            <i class="fa-solid fa-crown" style="color:var(--accent-gold); font-size:1.2rem;"></i>
-                            <div>
-                                <strong>${w.winner_name}</strong>
-                                <small style="display:block; color:var(--accent-green);">${w.prize_title}</small>
-                            </div>
-                        </div>
-                    `).join('');
+                    globalTickets = await res.json();
+                    renderGrid(currentFilter);
+                    renderProgress();
                 }
-            } catch (err) { console.error(err); }
-        }
+            } catch (e) {
+                console.log("Background sync error");
+            }
+        }, 4000);
     </script>
 </body>
 </html>
