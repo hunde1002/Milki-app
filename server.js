@@ -71,6 +71,9 @@ app.get('/', (req, res) => {
 const TOKEN = process.env.BOT_TOKEN;
 const WEB_APP_URL = process.env.WEB_APP_URL || 'https://milki-app.onrender.com';
 
+// User Language State Store (Session temp memory)
+const userLanguages = {};
+
 if (TOKEN && TOKEN !== 'YOUR_TELEGRAM_BOT_TOKEN_HERE') {
     try {
         const bot = new TelegramBot(TOKEN, { polling: true });
@@ -79,35 +82,90 @@ if (TOKEN && TOKEN !== 'YOUR_TELEGRAM_BOT_TOKEN_HERE') {
             console.error(`[Telegram Bot Error]: ${error.message}`);
         });
 
+        // 1. Command /start - Afaan Filachiisa
         bot.onText(/\/start/, (msg) => {
             const chatId = msg.chat.id;
-            const userName = msg.from.first_name || "Hiriyyaa";
+            const userName = msg.from.first_name || "User";
 
-            const welcomeMessage = `
-Baga gara bot keenya dhuftan, ${userName}! 🎟️
-Welcome to Hunde Lottery System.
-እንኳን ወደ ሁንዴ ሎተሪ በደህና መጡ!
-
-Carraa gaarii! Tikitii murachuuf liinkii armaan gadii tuqaa:
+            const selectLangMsg = `
+Baga nagaan dhufte ${userName}!
+Maaloo afaan fayyadamuu barbaaddu filadhu:
+-----------------------------
+Welcome ${userName}! Please select your language:
+-----------------------------
+እንኳን በደህና መጡ ${userName}! እባክዎን ቋንቋ ይምረጡ:
             `;
 
-            bot.sendMessage(chatId, welcomeMessage, {
+            bot.sendMessage(chatId, selectLangMsg, {
                 reply_markup: {
                     inline_keyboard: [
-                        [{ text: "🎟️ Open Lottery App", web_app: { url: WEB_APP_URL } }],
-                        [{ text: "👥 Hiriyyaa Affeeru (Referral)", callback_data: 'referral' }]
+                        [
+                            { text: "🌳 Afaan Oromoo", callback_data: 'lang_om' },
+                            { text: "🇬🇧 English", callback_data: 'lang_en' },
+                            { text: "🇪🇹 አማርኛ", callback_data: 'lang_am' }
+                        ]
                     ]
                 }
             });
         });
 
-        bot.on('callback_query', (query) => {
+        // 2. Callback Query Handler (Button Cuqaasamu Uumama)
+        bot.on('callback_query', async (query) => {
             const chatId = query.message.chat.id;
-            if (query.data === 'referral') {
-                bot.sendMessage(chatId, `🔗 Linkii affeerraa kee: https://t.me/YourBotName?start=ref_${chatId}\nHiriyoota kee afeeriitii carraa dachaaa argadhu!`);
+            const data = query.data;
+            const queryId = query.id;
+
+            // Telegram UI spinner dhaabuuf
+            await bot.answerCallbackQuery(queryId);
+
+            // AFAAN FILATAME HANDLE GOCHUU
+            if (data.startsWith('lang_')) {
+                const selectedLang = data.split('_')[1];
+                userLanguages[chatId] = selectedLang; // Save user language preference
+
+                let welcomeText = "";
+                let btnAppText = "";
+                let btnRefText = "";
+
+                if (selectedLang === 'om') {
+                    welcomeText = "Baga gara Hunde Lottery System dhuftan! 🎟️\nCarraa gaarii! Tikitii murachuuf liinkii armaan gadii tuqaa:";
+                    btnAppText = "🎟️ Lottery App Banadhu";
+                    btnRefText = "👥 Hiriyyaa Affeeru";
+                } else if (selectedLang === 'am') {
+                    welcomeText = "ወደ ሁንዴ ሎተሪ ሲስተም እንኳን በደህና መጡ! 🎟️\nመልካም እድል! ቲኬት ለመቁረጥ ከታች ያለውን ሊንክ ይጫኑ:";
+                    btnAppText = "🎟️ ሎተሪ መተግበሪያ ይክፈቱ";
+                    btnRefText = "👥 ጓደኛ ይጋብዙ";
+                } else { // English
+                    welcomeText = "Welcome to Hunde Lottery System! 🎟️\nGood luck! Click the button below to buy your ticket:";
+                    btnAppText = "🎟️ Open Lottery App";
+                    btnRefText = "👥 Invite Friends";
+                }
+
+                // Gara Fuula Next/Menu'tti Dabarsuu (Afaan filatameen)
+                await bot.sendMessage(chatId, welcomeText, {
+                    reply_markup: {
+                        inline_keyboard: [
+                            [{ text: btnAppText, web_app: { url: `${WEB_APP_URL}?lang=${selectedLang}` } }],
+                            [{ text: btnRefText, callback_data: 'referral' }]
+                        ]
+                    }
+                });
+            } 
+            // REFERRAL HANDLE GOCHUU
+            else if (data === 'referral') {
+                const userLang = userLanguages[chatId] || 'om';
+                let refMsg = `🔗 Linkii affeerraa kee: https://t.me/YourBotName?start=ref_${chatId}\nHiriyoota kee afeeriitii carraa dachaaa argadhu!`;
+                
+                if (userLang === 'am') {
+                    refMsg = `🔗 የእርስዎ መጋበዣ ሊንክ: https://t.me/YourBotName?start=ref_${chatId}\nጓደኞችዎን ይጋብዙ እና கூடுதல் እድል ያግኙ!`;
+                } else if (userLang === 'en') {
+                    refMsg = `🔗 Your referral link: https://t.me/YourBotName?start=ref_${chatId}\nInvite friends and double your chances!`;
+                }
+
+                await bot.sendMessage(chatId, refMsg);
             }
-            bot.answerCallbackQuery(query.id);
         });
+
     } catch (err) {
         console.error("Telegram Bot initialization error:", err.message);
     }
