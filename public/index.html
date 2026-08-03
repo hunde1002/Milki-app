@@ -397,7 +397,7 @@
 
         const dictionary = {
             om: {
-                admin: "Admin:", 
+                admin: "Admin:",
                 catAll: "Tikettii Hundumaa (1-50)", catPopular: "Lakkoofsota Bebekamoo", catNew: "Haaraa Banaman",
                 selectTitle: "Quick Multi-Ticket Selection", ticketDesc: "Tiketti 1 = <b style='color:#fff;'>200 ETB</b>. Baay'ee filatee kaffaltii iddo tokkotti raawwadhu:",
                 payHeader: "Kaffaltii & Screenshot Upload",
@@ -463,6 +463,7 @@
             }
 
             loadAppData();
+            startCountdown();
         });
 
         function selectInitialLang(lang) {
@@ -585,8 +586,11 @@
             grid.innerHTML = '';
             
             const max = globalSettings.max_tickets || 50;
+            const popularNumbers = [1, 7, 10, 13, 25, 50]; // Sample popular numbers
             
             for (let i = 1; i <= max; i++) {
+                if (filterType === 'popular' && !popularNumbers.includes(i)) continue;
+
                 const btn = document.createElement('button');
                 btn.type = 'button';
                 btn.classList.add('t-btn');
@@ -669,6 +673,28 @@
                 msgEl.style.color = 'var(--accent-red)';
                 msgEl.textContent = "Network error: Backend server qunnamuu dadhabe.";
             }
+        }
+
+        function startCountdown() {
+            // Target date example: 5 days from now
+            const targetDate = new Date().getTime() + (5 * 24 * 60 * 60 * 1000);
+            
+            setInterval(() => {
+                const now = new Date().getTime();
+                const diff = targetDate - now;
+
+                if (diff > 0) {
+                    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+                    document.getElementById('cdDays').textContent = String(days).padStart(2, '0');
+                    document.getElementById('cdHours').textContent = String(hours).padStart(2, '0');
+                    document.getElementById('cdMin').textContent = String(minutes).padStart(2, '0');
+                    document.getElementById('cdSec').textContent = String(seconds).padStart(2, '0');
+                }
+            }, 1000);
         }
 
         // AUTO REAL-TIME REFRESH SECONDI 4 HUNDAATTI
