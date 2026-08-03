@@ -206,7 +206,7 @@
 </head>
 <body>
 
-    <div id="welcomeModal" class="modal-overlay">
+    <div id="welcomeModal" class="modal-overlay" style="display: none;">
         <div class="modal-box">
             <i class="fa-solid fa-gem" style="font-size: 2.5rem; color: var(--accent-gold);"></i>
             <h2 style="margin-top: 10px; font-size: 1.2rem;" id="welcomeTitle">Baga Nagaan Dhuftan!</h2>
@@ -401,15 +401,6 @@
         let popularNumbers = [];
         let currentLang = 'om';
 
-        function generatePopularNumbers() {
-            let nums = new Set();
-            while(nums.size < 10) {
-                nums.add(Math.floor(Math.random() * 50) + 1);
-            }
-            popularNumbers = Array.from(nums);
-        }
-        generatePopularNumbers();
-
         const dictionary = {
             om: {
                 admin: "Admin:", 
@@ -457,6 +448,32 @@
                          <span><i class="fa-solid fa-square" style="color:#1a2230;"></i> ክፍት</span>`
             }
         };
+
+        // AUTO-DETECT LANGUAGE FROM TELEGRAM BOT / URL PARAMS
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const langParam = urlParams.get('lang');
+
+            if (langParam && dictionary[langParam]) {
+                // Yoo Bot irraa afaan ergame dhufe Modal sana dhoksi, afaanicha hojiirra oolchi
+                document.getElementById('welcomeModal').style.display = 'none';
+                changeLanguage(langParam);
+            } else {
+                // Yoo URL irra afaan hin jirre Modal saaqi
+                document.getElementById('welcomeModal').style.display = 'flex';
+                changeLanguage('om');
+            }
+
+            // Telegram user details autoguutuu
+            if (tg?.initDataUnsafe?.user) {
+                const u = tg.initDataUnsafe.user;
+                if (u.first_name) {
+                    document.getElementById('fullname').value = `${u.first_name} ${u.last_name || ''}`.trim();
+                }
+            }
+
+            loadAppData();
+        });
 
         function selectInitialLang(lang) {
             changeLanguage(lang);
@@ -530,7 +547,6 @@
                     if(globalSettings.prize_3rd) document.getElementById('prize3').textContent = `${globalSettings.prize_3rd} ETB`;
                     if(globalSettings.cbe_acc) document.getElementById('cbeAcc').textContent = `${globalSettings.cbe_acc} (Hunde Tesfaye Jule)`;
                     if(globalSettings.telebirr_acc) document.getElementById('teleAcc').textContent = `${globalSettings.telebirr_acc} (Hunde Tesfaye Jule)`;
-                    if(globalSettings.end_date) startTimer(globalSettings.end_date);
                 }
 
                 document.getElementById('maxTicketsDisplay').textContent = 50;
@@ -554,7 +570,7 @@
             renderGrid(type);
         }
 
-        // LOGIC: GRID NAMA 50 FI APPROVE TA'NAAN FIRST NAME MUL'ISUU
+        // GRID NAMA 50 FI APPROVE TA'NAAN MAQAA FIRST NAME MUL'ISUU
         function renderGrid(filterType) {
             const grid = document.getElementById('ticketGrid');
             grid.innerHTML = '';
@@ -572,83 +588,72 @@
                 }
             });
 
-            const max = 50;
-            for (let i = 1; i <= max; i++) {
+            for (let i = 1; i <= 50; i++) {
                 if (filterType === 'popular' && !popularNumbers.includes(i)) continue;
+                if (filterType === 'new' && takenMap[i]) continue;
 
-                const isTaken = takenMap.hasOwnProperty(i);
-                const btn = document.createElement('div');
-                btn.className = `t-btn ${isTaken ? 'taken' : ''}`;
+                const btn = document.createElement('button');
+                btn.className = 't-btn';
 
-                if (isTaken) {
-                    btn.textContent = takenMap[i];
-                    btn.title = `Ticket #${i} - ${takenMap[i]}`;
+                if (takenMap[i]) {
+                    btn.classList.add('taken');
+                    btn.textContent = takenMap[i]; // Maqaa nama bitate agarsiisi
                 } else {
-                    btn.textContent = String(i).padStart(2, '0');
-                }
-
-                if (!isTaken) {
+                    btn.textContent = i;
                     if (selectedTickets.includes(i)) btn.classList.add('selected');
-
-                    btn.onclick = () => {
-                        if (selectedTickets.includes(i)) {
-                            selectedTickets = selectedTickets.filter(n => n !== i);
-                            btn.classList.remove('selected');
-                        } else {
-                            selectedTickets.push(i);
-                            btn.classList.add('selected');
-                        }
-                        updateSelectedDisplay();
-                    };
+                    btn.onclick = () => toggleTicket(i, btn);
                 }
                 grid.appendChild(btn);
             }
         }
 
-        function updateSelectedDisplay() {
-            const display = document.getElementById('selectedDisplay');
-            if(selectedTickets.length === 0) {
-                display.textContent = "Hintaane";
+        function toggleTicket(num, btn) {
+            if (selectedTickets.includes(num)) {
+                selectedTickets = selectedTickets.filter(n => n !== num);
+                btn.classList.remove('selected');
             } else {
-                display.textContent = selectedTickets.map(n => `#${n}`).join(', ');
+                selectedTickets.push(num);
+                btn.classList.add('selected');
             }
+            document.getElementById('selectedDisplay').textContent = selectedTickets.length > 0 ? selectedTickets.join(', ') : 'Hintaane';
         }
 
         function renderProgress() {
-            let takenSet = new Set();
-            globalTickets.forEach(t => { 
-                if (t.ticket_numbers && (t.status === 'Approved' || t.status === 'approved')) {
-                    String(t.ticket_numbers).split(',').forEach(n => takenSet.add(n.trim()));
+            let takenCount = 0;
+            globalTickets.forEach(t => {
+                if (t.status === 'Approved' || t.status === 'approved') {
+                    const nums = String(t.ticket_numbers).split(',');
+                    takenCount += nums.length;
                 }
             });
-            const takenCount = takenSet.size;
-            const max = 50;
-            const left = max - takenCount;
-            const pct = Math.round((takenCount / max) * 100);
+            const left = Math.max(0, 50 - takenCount);
+            const percent = Math.round((takenCount / 50) * 100);
 
-            document.getElementById('countLeft').textContent = left >= 0 ? left : 0;
-            document.getElementById('percentText').textContent = `${pct}%`;
-            document.getElementById('progressBar').style.width = `${pct}%`;
+            document.getElementById('countLeft').textContent = left;
+            document.getElementById('percentText').textContent = percent + '%';
+            document.getElementById('progressBar').style.width = percent + '%';
         }
 
         async function submitForm(e) {
             e.preventDefault();
             const msg = document.getElementById('msgSubmit');
 
-            if(selectedTickets.length === 0) {
-                alert("Maaloo jalqaba lakkoofsa tikettii filadhaa!");
+            if (selectedTickets.length === 0) {
+                alert("Maaloo jalqaba tikettii kamiyyuu filadhu!");
                 return;
             }
 
-            msg.style.color = '#3b82f6';
-            msg.textContent = "Ergamaa jira...";
-
             const formData = new FormData();
+            formData.append('user_id', tg?.initDataUnsafe?.user?.id || 'web_user');
+            formData.append('username', tg?.initDataUnsafe?.user?.username || '');
             formData.append('fullname', document.getElementById('fullname').value);
             formData.append('phone', document.getElementById('phone').value);
-            formData.append('payment_method', document.getElementById('paymentMethod').value);
             formData.append('ticket_numbers', selectedTickets.join(','));
+            formData.append('payment_method', document.getElementById('paymentMethod').value);
             formData.append('screenshot', document.getElementById('screenshotFile').files[0]);
+
+            msg.style.color = '#ffb703';
+            msg.textContent = "Ergamaa jira, maaloo eegaa...";
 
             try {
                 const res = await fetch('/api/tickets', {
@@ -657,85 +662,67 @@
                 });
                 const data = await res.json();
 
-                if (res.ok && data.success) {
+                if (data.success) {
                     msg.style.color = '#22c55e';
-                    msg.textContent = "Milkaa'inaan ergameera! Approval Admin eegaa.";
-                    setTimeout(() => location.reload(), 2000);
+                    msg.textContent = data.message || "Tikettiin milkaa'inaan ergameera!";
+                    selectedTickets = [];
+                    document.getElementById('selectedDisplay').textContent = 'Hintaane';
+                    document.getElementById('lotteryForm').reset();
+                    document.getElementById('fileNameDisplay').textContent = "Suuraa kaffaltii filachuuf as tuqi";
+                    loadAppData();
                 } else {
                     msg.style.color = '#ef4444';
                     msg.textContent = data.message || "Dogoggorri uumameera!";
                 }
-            } catch(err) {
+            } catch (err) {
                 msg.style.color = '#ef4444';
-                msg.textContent = "Network Error! Server keessan check godhaa.";
+                msg.textContent = "Server connection error!";
             }
         }
 
-        async function renderMyTickets() {
+        function renderMyTickets() {
             const container = document.getElementById('myTicketsContainer');
-            container.innerHTML = '<p style="font-size:0.8rem; color:var(--text-muted);">Tikettiiwwan galmaa'an fidaa jira...</p>';
-            try {
-                const res = await fetch('/api/tickets');
-                if(!res.ok) return;
-                const tickets = await res.json();
-                
-                if(tickets.length === 0) {
-                    container.innerHTML = '<p style="font-size:0.85rem; color:var(--text-muted);">Tikettiin tokkollee hin galmoofne.</p>';
-                    return;
-                }
+            const userId = tg?.initDataUnsafe?.user?.id || 'web_user';
+            const userTickets = globalTickets.filter(t => String(t.user_id) === String(userId));
 
-                container.innerHTML = tickets.map(t => `
-                    <div style="background:#141923; border:1px solid var(--border-glass); padding:12px; border-radius:12px; margin-bottom:10px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <strong>Maqaa: ${t.fullname}</strong>
-                            <span class="badge ${t.status === 'Approved' || t.status === 'approved' ? 'badge-approved' : 'badge-pending'}">${t.status}</span>
-                        </div>
-                        <p style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Lakkoofsa Tikettii: <b style="color:var(--accent-gold);">${t.ticket_numbers}</b></p>
-                        <p style="font-size:0.75rem; color:var(--text-muted);">Mala Kaffaltii: ${t.payment_method}</p>
+            if (userTickets.length === 0) {
+                container.innerHTML = `<p style="font-size:0.85rem; color:var(--text-muted);">Tikettii bitattan hin jiru.</p>`;
+                return;
+            }
+
+            container.innerHTML = userTickets.map(t => `
+                <div style="background:#0a0d14; padding:12px; border-radius:10px; margin-bottom:10px; border:1px solid var(--border-glass);">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <strong>Tikettii: #${t.ticket_numbers}</strong>
+                        <span class="badge ${t.status === 'Approved' ? 'badge-approved' : 'badge-pending'}">${t.status}</span>
                     </div>
-                `).join('');
-            } catch(e) { console.error(e); }
+                    <small style="color:var(--text-muted); display:block; margin-top:4px;">Kaffaltii: ${t.payment_method}</small>
+                </div>
+            `).join('');
         }
 
         async function renderWinners() {
             const container = document.getElementById('winnersContainer');
             try {
                 const res = await fetch('/api/winners');
-                if(!res.ok) {
-                    container.innerHTML = '<p style="font-size:0.85rem; color:var(--text-muted);">Mo'attoonni ammayyuu hin ibsamne.</p>';
-                    return;
+                if (res.ok) {
+                    const winners = await res.json();
+                    if (winners.length === 0) {
+                        container.innerHTML = `<p style="font-size:0.85rem; color:var(--text-muted);">Mo'attoonni ammaan tana hin jiran.</p>`;
+                        return;
+                    }
+                    container.innerHTML = winners.map(w => `
+                        <div style="background:#0a0d14; padding:10px; border-radius:10px; margin-bottom:10px; display:flex; align-items:center; gap:10px; border:1px solid var(--border-glass);">
+                            <i class="fa-solid fa-crown" style="color:var(--accent-gold); font-size:1.2rem;"></i>
+                            <div>
+                                <strong>${w.winner_name}</strong>
+                                <small style="display:block; color:var(--accent-green);">${w.prize_title}</small>
+                            </div>
+                        </div>
+                    `).join('');
                 }
-                const winners = await res.json();
-                if(winners.length === 0) {
-                    container.innerHTML = '<p style="font-size:0.85rem; color:var(--text-muted);">Mo'attoonni ammayyuu hin ibsamne.</p>';
-                    return;
-                }
-                container.innerHTML = winners.map(w => `
-                    <div style="background:#141923; border:1px solid var(--accent-gold); padding:12px; border-radius:12px; margin-bottom:10px;">
-                        <h4 style="color:var(--accent-gold);"><i class="fa-solid fa-trophy"></i> Sadarkaa: ${w.prize_title || 'Winner'}</h4>
-                        <p style="font-size:0.85rem; font-weight:bold;">Maqaa: ${w.fullname}</p>
-                        <p style="font-size:0.8rem; color:var(--accent-green);">Tikettii: #${w.ticket_number}</p>
-                    </div>
-                `).join('');
-            } catch(e) { console.error(e); }
+            } catch (err) { console.error(err); }
         }
-
-        function startTimer(targetDateStr) {
-            const targetDate = new Date(targetDateStr).getTime();
-            setInterval(() => {
-                const now = new Date().getTime();
-                const diff = targetDate - now;
-                if (diff > 0) {
-                    document.getElementById('cdDays').innerText = String(Math.floor(diff / (1000 * 60 * 60 * 24))).padStart(2, '0');
-                    document.getElementById('cdHours').innerText = String(Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))).padStart(2, '0');
-                    document.getElementById('cdMin').innerText = String(Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))).padStart(2, '0');
-                    document.getElementById('cdSec').innerText = String(Math.floor((diff % (1000 * 60)) / 1000)).padStart(2, '0');
-                }
-            }, 1000);
-        }
-
-        // Init App Data
-        loadAppData();
     </script>
 </body>
 </html>
