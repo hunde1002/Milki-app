@@ -3,83 +3,191 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Login</title>
+    <title>Hunde Lottery - Admin Login</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        :root {
+            --primary-color: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-dark: #1f2937;
+            --text-muted: #6b7280;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
         body { 
-            font-family: Arial, sans-serif; 
             display: flex; 
+            flex-direction: column;
             justify-content: center; 
             align-items: center; 
             height: 100vh; 
-            background-color: #f4f4f9; 
+            background-color: var(--bg-color); 
             margin: 0; 
         }
+
+        .back-home {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            text-decoration: none;
+            color: var(--primary-color);
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            padding: 10px 16px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            transition: all 0.2s;
+        }
+
+        .back-home:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+
         .login-card { 
-            background: white; 
-            padding: 25px; 
-            border-radius: 8px; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
-            width: 300px; 
+            background: var(--card-bg); 
+            padding: 35px 30px; 
+            border-radius: 12px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08); 
+            width: 100%;
+            max-width: 380px; 
         }
-        .login-card h2 { 
-            margin-bottom: 20px; 
-            text-align: center; 
-            color: #333; 
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 25px;
         }
+
+        .login-header i {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+
+        .login-header h2 { 
+            color: var(--text-dark);
+            font-size: 1.5rem;
+        }
+
         .input-group { 
-            margin-bottom: 15px; 
+            margin-bottom: 18px; 
+            position: relative;
         }
+
         .input-group label { 
             display: block; 
-            margin-bottom: 5px; 
-            font-weight: bold; 
+            margin-bottom: 6px; 
+            font-weight: 600; 
+            font-size: 0.9rem;
+            color: var(--text-dark);
         }
-        .input-group input { 
-            width: 100%; 
-            padding: 8px; 
-            box-sizing: border-box; 
-            border: 1px solid #ccc; 
-            border-radius: 4px; 
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
         }
-        button { 
+
+        .input-wrapper input { 
             width: 100%; 
-            padding: 10px; 
-            background-color: #007bff; 
+            padding: 12px 40px 12px 14px; 
+            border: 1px solid #d1d5db; 
+            border-radius: 8px; 
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .input-wrapper input:focus {
+            border-color: var(--primary-color);
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            cursor: pointer;
+            color: var(--text-muted);
+        }
+
+        button.btn-login { 
+            width: 100%; 
+            padding: 12px; 
+            background-color: var(--primary-color); 
             color: white; 
             border: none; 
-            border-radius: 4px; 
+            border-radius: 8px; 
             cursor: pointer; 
-            font-size: 16px; 
-        }
-        button:hover { 
-            background-color: #0056b3; 
-        }
-        #message { 
-            margin-top: 15px; 
-            text-align: center; 
+            font-size: 1rem; 
             font-weight: bold;
+            transition: background 0.2s;
+            margin-top: 10px;
+        }
+
+        button.btn-login:hover { 
+            background-color: var(--primary-hover); 
+        }
+
+        #message { 
+            margin-top: 18px; 
+            text-align: center; 
+            font-weight: 600;
+            font-size: 0.9rem;
         }
     </style>
 </head>
 <body>
 
+<a href="/index.html" class="back-home">
+    <i class="fa-solid fa-arrow-left"></i> Gara Fuula Duraa (Home)
+</a>
+
 <div class="login-card">
-    <h2>Admin Login</h2>
+    <div class="login-header">
+        <i class="fa-solid fa-user-shield"></i>
+        <h2>Admin Login</h2>
+    </div>
     <form id="loginForm">
         <div class="input-group">
             <label for="username">Username</label>
-            <input type="text" id="username" placeholder="Username galchi" required>
+            <div class="input-wrapper">
+                <input type="text" id="username" placeholder="Username galchi" required autocomplete="username">
+            </div>
         </div>
         <div class="input-group">
             <label for="password">Password</label>
-            <input type="password" id="password" placeholder="Password galchi" required>
+            <div class="input-wrapper">
+                <input type="password" id="password" placeholder="Password galchi" required autocomplete="current-password">
+                <i class="fa-solid fa-eye toggle-password" id="togglePassword"></i>
+            </div>
         </div>
-        <button type="submit">Seeni</button>
+        <button type="submit" class="btn-login">Seeni</button>
     </form>
     <p id="message"></p>
 </div>
 
 <script>
+    // Password Hide/Show Logic
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('password');
+
+    togglePassword.addEventListener('click', () => {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        togglePassword.classList.toggle('fa-eye');
+        togglePassword.classList.toggle('fa-eye-slash');
+    });
+
+    // Login Handle Logic
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         
@@ -87,8 +195,7 @@
         const password = document.getElementById('password').value;
         const messageElement = document.getElementById('message');
 
-        // Text yeroo request erganu
-        messageElement.style.color = '#007bff';
+        messageElement.style.color = '#4f46e5';
         messageElement.textContent = "Ilaalamaa jira...";
 
         try {
@@ -101,20 +208,24 @@
             const data = await response.json();
 
             if (response.ok && data.success) {
-                messageElement.style.color = 'green';
+                messageElement.style.color = '#10b981';
                 messageElement.textContent = "Seensii milkaa'inaa! Gara Dashboard-ti cehaa jira...";
 
-                // Redirect gochuu (comment irraa banameera)
+                // Yoo server token deebise, localStorage keessatti olka'uu
+                if (data.token) {
+                    localStorage.setItem('adminToken', data.token);
+                }
+
                 setTimeout(() => {
                     window.location.href = '/dashboard.html';
                 }, 1000);
 
             } else {
-                messageElement.style.color = 'red';
+                messageElement.style.color = '#ef4444';
                 messageElement.textContent = data.message || "Username ykn Password dogoggoraa!";
             }
         } catch (error) {
-            messageElement.style.color = 'red';
+            messageElement.style.color = '#ef4444';
             messageElement.textContent = "Error: Server waliin qunnamtiin addaan cite!";
         }
     });

@@ -212,12 +212,13 @@ app.get('/api/settings', async (req, res) => {
     }
 });
 
-// Update Settings
+// Update Settings (FIXED WHERE CLAUSE)
 app.post('/api/settings', async (req, res) => {
     const { ticket_price, max_tickets, prize_1st, prize_2nd, end_date } = req.body;
     try {
         await pool.query(
-            `UPDATE settings SET ticket_price = $1, max_tickets = $2, prize_1st = $3, prize_2nd = $4, end_date = $5 WHERE id = 1`,
+            `UPDATE settings SET ticket_price = $1, max_tickets = $2, prize_1st = $3, prize_2nd = $4, end_date = $5 
+             WHERE id = (SELECT id FROM settings ORDER BY id DESC LIMIT 1)`,
             [ticket_price, max_tickets, prize_1st, prize_2nd, end_date]
         );
         return res.json({ success: true });
@@ -278,6 +279,17 @@ app.post('/api/tickets/status', async (req, res) => {
     }
 });
 
+// Delete Ticket (ADDED)
+app.delete('/api/tickets/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await pool.query(`DELETE FROM tickets WHERE id = $1`, [id]);
+        return res.json({ success: true, message: `Ticket #${id} haqameera.` });
+    } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 // Get Winners
 app.get('/api/winners', async (req, res) => {
     try {
@@ -296,6 +308,17 @@ app.post('/api/winners', async (req, res) => {
             `INSERT INTO winners (winner_name, prize_title, photo_url, announced_date) VALUES ($1, $2, $3, NOW())`,
             [winner_name, prize_title, photo_url]
         );
+        return res.json({ success: true });
+    } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Delete Winner (ADDED)
+app.delete('/api/winners/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await pool.query(`DELETE FROM winners WHERE id = $1`, [id]);
         return res.json({ success: true });
     } catch (err) {
         return res.status(500).json({ success: false, error: err.message });

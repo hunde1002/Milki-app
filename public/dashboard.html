@@ -252,6 +252,7 @@
             width: 100%;
             height: 180px;
             object-fit: cover;
+            cursor: pointer;
         }
 
         .gallery-info {
@@ -319,7 +320,7 @@
     <div class="main-content">
         <div class="top-navbar">
             <h2>Dashboard Overview</h2>
-            <div>Admin: <strong id="adminNameDisplay">Hunde Tesfaye</strong></div>
+            <div>Admin: <strong id="adminNameDisplay">Hunde Tesfaye Jule</strong></div>
         </div>
 
         <div class="content-area">
@@ -364,7 +365,7 @@
                         </tr>
                     </thead>
                     <tbody id="approvalsTableBody">
-                        </tbody>
+                    </tbody>
                 </table>
             </div>
 
@@ -372,13 +373,13 @@
                 <div class="panel-header">
                     <h3>Ticket Grid Visualizer</h3>
                     <p style="color: var(--text-muted); font-size: 0.9rem;">
-                        <span style="color: var(--success);">■ Approved</span> | 
+                        <span style="color: var(--danger);">■ Occupied (Approved)</span> | 
                         <span style="color: var(--warning);">■ Pending</span> | 
-                        <span>□ Available</span>
+                        <span style="color: var(--success);">□ Available</span>
                     </p>
                 </div>
                 <div class="visualizer-grid" id="visualizerGrid">
-                    </div>
+                </div>
             </div>
 
             <div id="tab-payments" class="tab-panel">
@@ -398,7 +399,7 @@
                         </tr>
                     </thead>
                     <tbody id="paymentsTableBody">
-                        </tbody>
+                    </tbody>
                 </table>
             </div>
 
@@ -407,7 +408,7 @@
                     <h3>Payment Screenshots Gallery</h3>
                 </div>
                 <div class="gallery-grid" id="screenshotsGallery">
-                    </div>
+                </div>
             </div>
 
             <div id="tab-winners" class="tab-panel">
@@ -510,52 +511,63 @@
             // 1. Render Approvals Table
             const approvalsTbody = document.getElementById('approvalsTableBody');
             approvalsTbody.innerHTML = '';
-            pendingTickets.forEach(t => {
-                approvalsTbody.innerHTML += `
-                    <tr>
-                        <td>#${t.id}</td>
-                        <td>${t.fullname}</td>
-                        <td>${t.phone}</td>
-                        <td><strong>${t.ticket_numbers}</strong></td>
-                        <td>${t.payment_method}</td>
-                        <td><span class="badge badge-pending">Pending</span></td>
-                        <td>
-                            <button class="btn-sm btn-approve" onclick="updateTicketStatus(${t.id}, 'Approved')">Approve</button>
-                            <button class="btn-sm btn-reject" onclick="updateTicketStatus(${t.id}, 'Rejected')">Reject</button>
-                        </td>
-                    </tr>
-                `;
-            });
+            if (pendingTickets.length === 0) {
+                approvalsTbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--text-muted);">Gaaffiin eegumsa irra jiru hin jiru (No pending requests).</td></tr>`;
+            } else {
+                pendingTickets.forEach(t => {
+                    approvalsTbody.innerHTML += `
+                        <tr>
+                            <td>#${t.id}</td>
+                            <td>${t.fullname || 'N/A'}</td>
+                            <td>${t.phone || 'N/A'}</td>
+                            <td><strong>${t.ticket_numbers}</strong></td>
+                            <td>${t.payment_method || 'CBE'}</td>
+                            <td><span class="badge badge-pending">Pending</span></td>
+                            <td>
+                                <button class="btn-sm btn-approve" onclick="updateTicketStatus(${t.id}, 'Approved')">Approve</button>
+                                <button class="btn-sm btn-reject" onclick="updateTicketStatus(${t.id}, 'Rejected')">Reject</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
 
             // 2. Render Payments Table
             const paymentsTbody = document.getElementById('paymentsTableBody');
             paymentsTbody.innerHTML = '';
-            globalTickets.forEach(t => {
-                paymentsTbody.innerHTML += `
-                    <tr>
-                        <td>#${t.id}</td>
-                        <td>${t.fullname}</td>
-                        <td>${t.phone}</td>
-                        <td>${t.payment_method}</td>
-                        <td>${t.ticket_numbers}</td>
-                        <td>${new Date(t.created_at).toLocaleDateString()}</td>
-                        <td><span class="badge badge-${t.status.toLowerCase()}">${t.status}</span></td>
-                    </tr>
-                `;
-            });
+            if (globalTickets.length === 0) {
+                paymentsTbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--text-muted);">Kaffaltiinis ta'e galmeen hin jiru.</td></tr>`;
+            } else {
+                globalTickets.forEach(t => {
+                    const statusClass = (t.status || 'Pending').toLowerCase();
+                    paymentsTbody.innerHTML += `
+                        <tr>
+                            <td>#${t.id}</td>
+                            <td>${t.fullname}</td>
+                            <td>${t.phone}</td>
+                            <td>${t.payment_method || 'CBE'}</td>
+                            <td>${t.ticket_numbers}</td>
+                            <td>${t.created_at ? new Date(t.created_at).toLocaleDateString() : '-'}</td>
+                            <td><span class="badge badge-${statusClass}">${t.status}</span></td>
+                        </tr>
+                    `;
+                });
+            }
 
             // 3. Render Visualizer Grid
             const gridContainer = document.getElementById('visualizerGrid');
             gridContainer.innerHTML = '';
-            const max = globalSettings.max_tickets || 50;
+            const max = parseInt(globalSettings.max_tickets) || 50;
             
             // Map taken numbers
             let takenMap = {};
             globalTickets.forEach(t => {
-                let nums = t.ticket_numbers.split(',').map(n => n.trim());
-                nums.forEach(n => {
-                    takenMap[n] = t.status;
-                });
+                if (t.ticket_numbers) {
+                    let nums = String(t.ticket_numbers).split(',').map(n => n.trim());
+                    nums.forEach(n => {
+                        takenMap[n] = t.status;
+                    });
+                }
             });
 
             for (let i = 1; i <= max; i++) {
@@ -573,25 +585,33 @@
             // 4. Render Gallery
             const gallery = document.getElementById('screenshotsGallery');
             gallery.innerHTML = '';
-            globalTickets.forEach(t => {
-                if (t.screenshot) {
+            const ticketsWithSS = globalTickets.filter(t => t.screenshot);
+            if (ticketsWithSS.length === 0) {
+                gallery.innerHTML = `<p style="color: var(--text-muted);">Screenshot-ni galmeeffame hin jiru.</p>`;
+            } else {
+                ticketsWithSS.forEach(t => {
                     gallery.innerHTML += `
                         <div class="gallery-card">
-                            <img src="${t.screenshot}" alt="Screenshot">
+                            <a href="${t.screenshot}" target="_blank">
+                                <img src="${t.screenshot}" alt="Payment Screenshot">
+                            </a>
                             <div class="gallery-info">
                                 <strong>${t.fullname}</strong><br>
                                 Ticket: ${t.ticket_numbers}
                             </div>
                         </div>
                     `;
-                }
-            });
+                });
+            }
 
             // Populate Settings Form
             document.getElementById('settingPrice').value = globalSettings.ticket_price || 200;
             document.getElementById('settingMaxTickets').value = globalSettings.max_tickets || 50;
             document.getElementById('settingPrize1').value = globalSettings.prize_1st || 6000;
             document.getElementById('settingPrize2').value = globalSettings.prize_2nd || 2000;
+            if (globalSettings.end_date) {
+                document.getElementById('settingEndDate').value = new Date(globalSettings.end_date).toISOString().slice(0, 16);
+            }
         }
 
         // Action: Approve or Reject Ticket
@@ -606,6 +626,8 @@
                 if (data.success) {
                     alert(`Ticket #${id} status ${status}-tti jijjiirameera!`);
                     loadDashboardData();
+                } else {
+                    alert("Error: " + (data.message || "Status jijjiiruu hin danda'amne."));
                 }
             } catch (err) {
                 alert("Error status jijjiiruu irratti uumame!");
@@ -623,40 +645,63 @@
                 end_date: document.getElementById('settingEndDate').value
             };
 
-            const res = await fetch('/api/settings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+            try {
+                const res = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
 
-            const data = await res.json();
-            if (data.success) {
-                alert("Settings milkaa'inaan haaromfameera!");
-                loadDashboardData();
+                const data = await res.json();
+                if (data.success) {
+                    alert("Settings milkaa'inaan haaromfameera!");
+                    loadDashboardData();
+                } else {
+                    alert("Error settings save gochuu irratti uumame.");
+                }
+            } catch (err) {
+                alert("Network error!");
             }
         }
 
         // Action: Publish Winner
         async function publishWinner() {
+            const winnerName = document.getElementById('winnerName').value;
+            const winnerPrize = document.getElementById('winnerPrize').value;
+            const winnerPhoto = document.getElementById('winnerPhoto').value;
+
+            if (!winnerName || !winnerPrize) {
+                alert("Maaloo maqaa fi badhaasa abbaa carraa guutaa!");
+                return;
+            }
+
             const payload = {
-                winner_name: document.getElementById('winnerName').value,
-                prize_title: document.getElementById('winnerPrize').value,
-                photo_url: document.getElementById('winnerPhoto').value
+                winner_name: winnerName,
+                prize_title: winnerPrize,
+                photo_url: winnerPhoto
             };
 
-            const res = await fetch('/api/winners', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+            try {
+                const res = await fetch('/api/winners', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
 
-            const data = await res.json();
-            if (data.success) {
-                alert("Abbaan carraa milkaa'inaan maxxanfameera!");
+                const data = await res.json();
+                if (data.success) {
+                    alert("Abbaan carraa milkaa'inaan maxxanfameera!");
+                    document.getElementById('winnerName').value = '';
+                    document.getElementById('winnerPrize').value = '';
+                    document.getElementById('winnerPhoto').value = '';
+                }
+            } catch (err) {
+                alert("Error winner maxxansuu irratti uumame.");
             }
         }
 
         function logout() {
+            // Optional: session/token clear gochuu
             window.location.href = '/';
         }
 
