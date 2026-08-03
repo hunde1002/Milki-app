@@ -37,7 +37,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Anti-Spam Rate Limiting
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 200, // Limiter xiqqoo ol kaafameera akka auto-save dafee request hedduu hin blokeessine
+    max: 200, 
     message: { success: false, message: "Request baay'ee ergitaniirtu! Maaloo daqiiqaa 15 booda deebi'aa yaalaa." }
 });
 app.use('/api/', limiter);
@@ -149,7 +149,7 @@ Welcome ${userName}! Please select your language:
                 let refMsg = `🔗 Linkii affeerraa kee: https://t.me/YourBotName?start=ref_${chatId}\nHiriyoota kee afeeriitii carraa dachaaa argadhu!`;
                 
                 if (userLang === 'am') {
-                    refMsg = `🔗 የእርስዎ መጋበዣ ሊንክ: https://t.me/YourBotName?start=ref_${chatId}\nጓደኞችዎን ይጋብዙ እና கூடுதல் እድል ያግኙ!`;
+                    refMsg = `🔗 የእርስዎ መጋበዣ ሊንክ: https://t.me/YourBotName?start=ref_${chatId}\nጓደኞችዎን ይጋብዙ እና ተጨማሪ እድል ያግኙ!`;
                 } else if (userLang === 'en') {
                     refMsg = `🔗 Your referral link: https://t.me/YourBotName?start=ref_${chatId}\nInvite friends and double your chances!`;
                 }
@@ -280,7 +280,6 @@ app.post('/api/settings', async (req, res) => {
 // GET ALL TICKETS (FOR USER GRID & ADMIN CONTROL)
 app.get('/api/tickets', async (req, res) => {
     try {
-        // Tiketoota hunda (Pending, Approved, Reserved) akka dafee fetch godhuu danda'uuf
         const result = await pool.query("SELECT * FROM tickets ORDER BY id DESC");
         return res.json(result.rows || []);
     } catch (err) {
@@ -288,29 +287,75 @@ app.get('/api/tickets', async (req, res) => {
     }
 });
 
-// AUTO-SAVE / CREATE NEW TICKET PURCHASE (FOOYYA'AA)
+// GET ONLY BOOKED/TAKEN TICKET NUMBERS (STEP 2 - FOR FRONTEND GRID DISABLE)
+app.get('/api/booked-numbers', async (req, res) => {
+    try {
+        const result = await pool.query("SELECT ticket_numbers FROM tickets WHERE status IN ('Pending', 'Approved', 'Reserved')");
+        
+        let bookedNumbers = [];
+        result.rows.forEach(row => {
+            if (row.ticket_numbers) {
+                const nums = row.ticket_numbers.split(',').map(n => n.trim());
+                bookedNumbers.push(...nums);
+            }
+        });
+
+        // Duplicate s dhiquu
+        bookedNumbers = [...new Set(bookedNumbers)];
+
+        return res.json({ success: true, bookedNumbers });
+    } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// AUTO-SAVE / CREATE NEW TICKET PURCHASE (STEP 1 - FOOYYA'AA FI DUPLICATE PREVENTING)
 const handleTicketPurchase = async (req, res) => {
     try {
         const { user_id, username, fullname, phone, ticket_numbers, payment_method, status } = req.body;
 
-        // Screenshot yoo hin jirre akka hin kufneef path duwwaa godha
-        const screenshotPath = req.file ? req.file.path : '';
+        if (!ticket_numbers) {
+            return res.status(400).json({ success: false, message: "Lakkoofsi tiketti filatamuu qaba!" });
+        }
 
-        // Status yoo ergame (eg: 'Reserved' ykn 'Pending') isa fudhata
+        // 1. Lakkoofsi sun kanaan dura qabamuu/murtamuusaa DB irraa mirkaneessuu
+        const existingTickets = await pool.query("SELECT ticket_numbers FROM tickets WHERE status IN ('Pending', 'Approved', 'Reserved')");
+        
+        let takenNumbers = [];
+        existingTickets.rows.forEach(row => {
+            if (row.ticket_numbers) {
+                const nums = row.ticket_numbers.split(',').map(n => n.trim());
+                takenNumbers.push(...nums);
+            }
+        });
+
+        const requestedNumbers = ticket_numbers.split(',').map(n => n.trim());
+        const isAlreadyTaken = requestedNumbers.some(num => takenNumbers.includes(num));
+
+        if (isAlreadyTaken) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Lakkoofsa filattan keessaa tokko kanaan dura dhuunfatameera! Maaloo lakkoofsa biraa filadha." 
+            });
+        }
+
+        // 2. Screenshot Path Mirkaneessuu
+        const screenshotPath = req.file ? req.file.path : '';
         const ticketStatus = status || 'Pending';
 
+        // 3. Database-itti saavee gochuu
         const result = await pool.query(
             `INSERT INTO tickets (user_id, username, fullname, phone, ticket_numbers, payment_method, screenshot, status) 
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
             [user_id || '', username || '', fullname || '', phone || '', ticket_numbers || '', payment_method || '', screenshotPath, ticketStatus]
         );
 
-        // Auto-save milkaa'eera, DB Row guutuu deebisa
         return res.status(200).json({ 
             success: true, 
             message: "Tikettiin milkaa'inaan saavee ta'eera!", 
             ticket: result.rows[0] 
         });
+
     } catch (error) {
         console.error("Error saving ticket:", error);
         return res.status(500).json({ success: false, message: "Server error uumameera: " + error.message });

@@ -5,7 +5,7 @@
     --primary-color: #6366f1;
     --primary-hover: #4f46e5;
     --bg-dark: #0f172a;
-    --bg-card: rgba(30, 41, 59, 0.7);
+    --bg-card: rgba(30, 41, 59, 0.75);
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
     --border-color: rgba(255, 255, 255, 0.1);
@@ -14,14 +14,22 @@
     --danger-color: #ef4444;
     --radius-lg: 16px;
     --radius-md: 10px;
+    
+    /* Grid colors */
+    --btn-bg: rgba(255, 255, 255, 0.08);
+    --btn-text: #f8fafc;
 }
 
 [data-theme="light"] {
     --bg-dark: #f1f5f9;
-    --bg-card: rgba(255, 255, 255, 0.8);
+    --bg-card: rgba(255, 255, 255, 0.85);
     --text-main: #0f172a;
     --text-muted: #64748b;
     --border-color: rgba(0, 0, 0, 0.1);
+    
+    /* Grid colors for Light Theme */
+    --btn-bg: #e2e8f0;
+    --btn-text: #0f172a;
 }
 
 * {
@@ -36,7 +44,7 @@ body {
     background-color: var(--bg-dark);
     color: var(--text-main);
     min-height: 100vh;
-    padding-bottom: 80px; /* Space for bottom nav */
+    padding-bottom: 90px; /* Space for bottom nav */
     transition: background-color 0.3s ease;
 }
 
@@ -53,7 +61,7 @@ body {
     margin: 15px auto;
     width: 92%;
     max-width: 500px;
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.25);
 }
 
 /* ==========================================
@@ -81,8 +89,9 @@ body {
     transform: translateX(-50%);
     width: 92%;
     max-width: 450px;
-    background: rgba(15, 23, 42, 0.85);
+    background: rgba(15, 23, 42, 0.88);
     backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
     border: 1px solid var(--border-color);
     border-radius: 30px;
     display: flex;
@@ -108,7 +117,7 @@ body {
 }
 
 .glass-nav button.active, .glass-nav button:hover {
-    color: var(--text-main);
+    color: #ffffff;
     background: var(--primary-color);
     box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
 }
@@ -150,7 +159,7 @@ body {
 }
 
 /* ==========================================
-   COUNTDOWN TIMER & GRID
+   COUNTDOWN TIMER
    ========================================== */
 .timer-container {
     display: flex;
@@ -164,6 +173,7 @@ body {
     padding: 10px;
     border-radius: var(--radius-md);
     min-width: 60px;
+    border: 1px solid var(--border-color);
 }
 
 .timer-box span {
@@ -173,7 +183,7 @@ body {
     color: var(--primary-color);
 }
 
-/* Tickets List Grid */
+/* Tickets List Grid & Badges */
 #tickets-grid, #tickets-list-container {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -186,6 +196,7 @@ body {
     padding: 4px 8px;
     border-radius: 6px;
     font-size: 0.8rem;
+    font-weight: 600;
 }
 
 .badge-approved {
@@ -194,4 +205,58 @@ body {
     padding: 4px 8px;
     border-radius: 6px;
     font-size: 0.8rem;
+    font-weight: 600;
+}
+
+/* ==========================================
+   TICKET SELECTION GRID (FOOYYA'AA)
+   ========================================== */
+#ticket-grid-container {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin: 18px 0;
+    max-height: 320px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.ticket-number-btn {
+    padding: 12px 5px;
+    border: 1px solid var(--border-color);
+    background: var(--btn-bg);
+    color: var(--btn-text);
+    border-radius: var(--radius-md);
+    font-weight: bold;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.ticket-number-btn:hover:not(:disabled) {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+}
+
+.ticket-number-btn.selected {
+    background: var(--primary-color) !important;
+    color: #ffffff !important;
+    border-color: #818cf8 !important;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.5);
+}
+
+.ticket-number-btn.taken {
+    background: var(--danger-color) !important;
+    color: #ffffff !important;
+    border-color: #dc2626 !important;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* Media Query For Extra Small Screens */
+@media (max-width: 360px) {
+    #ticket-grid-container {
+        grid-template-columns: repeat(4, 1fr);
+    }
 }

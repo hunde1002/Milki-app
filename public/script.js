@@ -71,18 +71,26 @@ const translations = {
 };
 
 let currentLang = 'om';
-let ticketPrice = 200; // Default price
+let ticketPrice = 200; 
+let maxTickets = 50;
+let selectedNumbers = []; // User-n lakkoofsota filate qabata
 
-// Initialize Telegram WebApp Data
+// Initialize Telegram WebApp Data (Persistent LocalStorage Fallback)
 const tgApp = window.Telegram?.WebApp;
 if (tgApp) {
     tgApp.ready();
     tgApp.expand();
 }
 
-// Global User Info (Telegram ykn Guest)
+// User ID Back yoo jedhan akka hin badneef LocalStorage keessatti save gochuu
+let savedUserId = localStorage.getItem('hunde_user_id');
+if (!savedUserId) {
+    savedUserId = tgApp?.initDataUnsafe?.user?.id ? String(tgApp.initDataUnsafe.user.id) : 'guest_' + Date.now();
+    localStorage.setItem('hunde_user_id', savedUserId);
+}
+
 const currentUser = {
-    id: tgApp?.initDataUnsafe?.user?.id || 'guest_' + Date.now(),
+    id: savedUserId,
     username: tgApp?.initDataUnsafe?.user?.username || 'GuestUser',
     first_name: tgApp?.initDataUnsafe?.user?.first_name || ''
 };
@@ -99,7 +107,6 @@ function changeLanguage(lang) {
     });
 }
 
-// Detect language from URL parameter (eg: ?lang=am)
 function detectLanguageFromURL() {
     const urlParams = new URLSearchParams(window.location.search);
     const langParam = urlParams.get('lang');
@@ -108,7 +115,7 @@ function detectLanguageFromURL() {
     }
 }
 
-// 2. Navigation
+// 2. Navigation & View Refresh
 function navigateTo(pageId, evt) {
     document.querySelectorAll('.page-view').forEach(p => p.classList.remove('active'));
     
@@ -122,6 +129,7 @@ function navigateTo(pageId, evt) {
         evt.currentTarget.classList.add('active');
     }
 
+    if (pageId === 'checkout' || pageId === 'home') loadTicketGrid();
     if (pageId === 'mytickets') loadUserTickets();
     if (pageId === 'winners') loadWinners();
 }
@@ -131,32 +139,90 @@ function toggleTheme() {
     document.body.setAttribute('data-theme', isLight ? '' : 'light');
 }
 
-function copyText(text) {
-    navigator.clipboard.writeText(text);
-    alert('Copied to clipboard: ' + text);
-}
-
 function calculateTotal() {
-    const countInput = document.getElementById('ticket-count');
-    const count = countInput ? countInput.value : 1;
     const totalElem = document.getElementById('total-cost');
     if (totalElem) {
-        totalElem.innerText = count * ticketPrice;
+        totalElem.innerText = selectedNumbers.length * ticketPrice;
     }
 }
 
-// 3. Fetch Settings & Countdown
+// 3. TICKET GRID GENERATOR & DISABLED TAKEN NUMBERS
+async function loadTicketGrid() {
+    const gridContainer = document.getElementById('ticket-grid-container');
+    if (!gridContainer) return;
+
+    try {
+        // DB irraa lakkoofsota kanaan dura dhuunfataman fetch gochuu
+        const res = await fetch('/api/tickets');
+        const tickets = await res.json();
+        
+        let takenNumbers = [];
+        tickets.forEach(t => {
+            if (t.status === 'Approved' || t.status === 'Pending' || t.status === 'Reserved') {
+                if (t.ticket_numbers) {
+                    const nums = t.ticket_numbers.split(',').map(n => n.trim());
+                    takenNumbers.push(...nums);
+                }
+            }
+        });
+
+        gridContainer.innerHTML = '';
+        selectedNumbers = []; // Clear array on reload
+        calculateTotal();
+
+        for (let i = 1; i <= maxTickets; i++) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'ticket-number-btn';
+            btn.innerText = i;
+
+            const isTaken = takenNumbers.includes(String(i));
+
+            if (isTaken) {
+                btn.classList.add('taken');
+                btn.disabled = true;
+                btn.title = 'Lakkoofsi kun kanaan dura dhuunfatameera';
+            } else {
+                btn.onclick = () => toggleNumberSelection(i, btn);
+            }
+
+            gridContainer.appendChild(btn);
+        }
+    } catch (err) {
+        console.error("Error loading ticket grid:", err);
+    }
+}
+
+function toggleNumberSelection(num, btnElement) {
+    const strNum = String(num);
+    const index = selectedNumbers.indexOf(strNum);
+
+    if (index > -1) {
+        selectedNumbers.splice(index, 1);
+        btnElement.classList.remove('selected');
+    } else {
+        selectedNumbers.push(strNum);
+        btnElement.classList.add('selected');
+    }
+
+    calculateTotal();
+}
+
+// 4. Fetch Settings & Countdown
 async function fetchSettings() {
     try {
         const res = await fetch('/api/settings');
         const data = await res.json();
         if (data.ticket_price) {
             ticketPrice = data.ticket_price;
-            calculateTotal();
+        }
+        if (data.max_tickets) {
+            maxTickets = data.max_tickets;
         }
         if (data.end_date) {
             startCountdown(data.end_date);
         }
+        loadTicketGrid();
     } catch (err) {
         console.error("Error fetching settings:", err);
     }
@@ -183,39 +249,43 @@ function startCountdown(endDate) {
     }, 1000);
 }
 
-// 4. Ticket Submission (FIXED FOR MULTER FILE UPLOAD)
+// 5. Ticket Submission (FIXED: SENDS SELECTED NUMBERS ARRAY)
 async function submitTicket(e) {
     e.preventDefault();
 
     const fullname = document.getElementById('fullname').value;
     const phone = document.getElementById('phone').value;
-    const ticketCount = document.getElementById('ticket-count').value;
     const screenshotInput = document.getElementById('screenshot');
+
+    if (selectedNumbers.length === 0) {
+        alert("Maaloo lakkoofsa tiketi yoo xiqqaate tokko filadhaa!");
+        return;
+    }
 
     if (!screenshotInput.files || screenshotInput.files.length === 0) {
         alert("Maaloo suuraa/screenshot kaffaltii upload godhaa!");
         return;
     }
 
-    // FormData fayyadamuu qabna file upload gochuuf
     const formData = new FormData();
     formData.append('user_id', currentUser.id);
     formData.append('username', currentUser.username);
     formData.append('fullname', fullname);
     formData.append('phone', phone);
-    formData.append('ticket_numbers', ticketCount);
+    formData.append('ticket_numbers', selectedNumbers.join(', ')); // Fakkeenya: "3, 12, 45"
     formData.append('payment_method', 'CBE/Telebirr');
     formData.append('screenshot', screenshotInput.files[0]);
 
     try {
         const res = await fetch('/api/tickets', {
             method: 'POST',
-            body: formData // Header Content-Type browser offiisaan set godha
+            body: formData
         });
         
         const data = await res.json();
         if (data.success) {
             alert('Tikettiin keessan milkaa\'inaan ergameera! Approval Admin eegaa.');
+            selectedNumbers = [];
             navigateTo('mytickets');
         } else {
             alert('Error: ' + data.message);
@@ -226,7 +296,7 @@ async function submitTicket(e) {
     }
 }
 
-// 5. Load My Tickets
+// 6. Load My Tickets (FIXED matching logic)
 async function loadUserTickets() {
     try {
         const res = await fetch('/api/tickets');
@@ -234,8 +304,8 @@ async function loadUserTickets() {
         const container = document.getElementById('tickets-list-container');
         if (!container) return;
 
-        // User-id kanaan filter gochuu (yoo backend hunda deebise)
-        const myTickets = tickets.filter(t => String(t.user_id) === String(currentUser.id) || !t.user_id);
+        // User ID safe String conversion
+        const myTickets = tickets.filter(t => String(t.user_id) === String(currentUser.id));
 
         if (myTickets.length === 0) {
             container.innerHTML = '<p style="text-align:center; padding:20px;">Tikitii bitattan hin qabdan.</p>';
@@ -245,10 +315,9 @@ async function loadUserTickets() {
         container.innerHTML = myTickets.map(t => `
             <div class="glass-card" style="margin-bottom:12px; padding:15px; border-radius:10px;">
                 <p><strong>Ticket ID:</strong> #${t.id}</p>
-                <p><strong>Name:</strong> ${t.fullname || 'N/A'}</p>
-                <p><strong>Count:</strong> ${t.ticket_numbers}</p>
-                <p><strong>Status:</strong> <span style="color:${t.status === 'Approved' ? '#22c55e' : '#eab308'}; font-weight:bold;">${t.status}</span></p>
-                ${t.status === 'Approved' ? '<button class="primary-btn" style="margin-top:8px;" onclick="alert(\'Digital Pass Downloaded!\')">Download Pass 🎟️</button>' : ''}
+                <p><strong>Maqaa:</strong> ${t.fullname || 'N/A'}</p>
+                <p><strong>Lakkoofsota Filataman:</strong> <span style="color:#0284c7; font-weight:bold;">${t.ticket_numbers}</span></p>
+                <p><strong>Haala (Status):</strong> <span style="color:${t.status === 'Approved' ? '#22c55e' : '#eab308'}; font-weight:bold;">${t.status}</span></p>
             </div>
         `).join('');
     } catch (err) {
@@ -256,7 +325,7 @@ async function loadUserTickets() {
     }
 }
 
-// 6. Load Winners (FIXED BUG)
+// 7. Load Winners
 async function loadWinners() {
     try {
         const res = await fetch('/api/winners');
@@ -270,7 +339,7 @@ async function loadWinners() {
                     <h4>🏆 ${w.winner_name}</h4>
                     <p>${w.prize_title}</p>
                 </div>
-            `).join(''); // FIXED: '.value' baddeera
+            `).join('');
         } else {
             container.innerHTML = '<p style="text-align:center;">Mo\'attoonni hin labamne.</p>';
         }
@@ -279,99 +348,11 @@ async function loadWinners() {
     }
 }
 
-// 7. Admin Login (API Integration)
-async function loginAdmin() {
-    const usernameInput = document.getElementById('admin-user').value;
-    const passwordInput = document.getElementById('admin-pass').value;
-
-    try {
-        const res = await fetch('/api/admin/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: usernameInput, password: passwordInput })
-        });
-
-        const data = await res.json();
-        if (data.success) {
-            document.getElementById('admin-login-box').style.display = 'none';
-            document.getElementById('admin-dashboard-content').style.display = 'block';
-        } else {
-            alert(data.message || 'Username ykn Password dogoggoraa!');
-        }
-    } catch (err) {
-        console.error("Admin login error:", err);
-    }
-}
-
-// 8. Admin Settings Save
-async function saveAdminSettings() {
-    const ticket_price = document.getElementById('setting-price')?.value;
-    const max_tickets = document.getElementById('setting-max')?.value;
-    const prize_1st = document.getElementById('setting-prize1')?.value;
-    const prize_2nd = document.getElementById('setting-prize2')?.value;
-    const end_date = document.getElementById('setting-enddate')?.value;
-
-    try {
-        const res = await fetch('/api/settings', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ticket_price, max_tickets, prize_1st, prize_2nd, end_date })
-        });
-        const data = await res.json();
-        if (data.success) {
-            alert('Settings saved successfully!');
-            fetchSettings();
-        }
-    } catch (err) {
-        console.error("Save settings error:", err);
-    }
-}
-
-// 9. Export Tickets to CSV
-function exportToExcel() {
-    fetch('/api/tickets')
-        .then(res => res.json())
-        .then(data => {
-            if (!data || data.length === 0) {
-                alert('Tikeetiin galmaa\'e hin jiru!');
-                return;
-            }
-
-            let csvContent = "data:text/csv;charset=utf-8,ID,Full Name,Phone,Tickets Count,Payment Method,Status,Date\n";
-            
-            data.forEach(row => {
-                let rowData = [
-                    row.id,
-                    `"${row.fullname || ''}"`,
-                    `"${row.phone || ''}"`,
-                    row.ticket_numbers,
-                    `"${row.payment_method || ''}"`,
-                    row.status,
-                    `"${row.created_at || ''}"`
-                ];
-                csvContent += rowData.join(",") + "\n";
-            });
-
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `lottery_tickets_export_${new Date().toISOString().slice(0,10)}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        })
-        .catch(err => {
-            console.error('Error exporting data:', err);
-            alert('Rakkoon uumame; irra deebi\'ii yaali.');
-        });
-}
-
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     detectLanguageFromURL();
     fetchSettings();
 
-    // Attach Form Submit Listener
     const checkoutForm = document.getElementById('checkout-form');
     if (checkoutForm) {
         checkoutForm.addEventListener('submit', submitTicket);
