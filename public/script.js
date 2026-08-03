@@ -129,7 +129,8 @@ function navigateTo(pageId, evt) {
         evt.currentTarget.classList.add('active');
     }
 
-    if (pageId === 'checkout' || pageId === 'home') loadTicketGrid();
+    // SIRREEFFAMA: `home` irratti qofa grid re-load godhi, checkout irratti selected numbers akka hin balleessineef
+    if (pageId === 'home') loadTicketGrid();
     if (pageId === 'mytickets') loadUserTickets();
     if (pageId === 'winners') loadWinners();
 }
@@ -152,7 +153,6 @@ async function loadTicketGrid() {
     if (!gridContainer) return;
 
     try {
-        // DB irraa lakkoofsota kanaan dura dhuunfataman fetch gochuu
         const res = await fetch('/api/tickets');
         const tickets = await res.json();
         
@@ -167,27 +167,31 @@ async function loadTicketGrid() {
         });
 
         gridContainer.innerHTML = '';
-        selectedNumbers = []; // Clear array on reload
-        calculateTotal();
 
         for (let i = 1; i <= maxTickets; i++) {
             const btn = document.createElement('button');
+            const strI = String(i);
             btn.type = 'button';
             btn.className = 'ticket-number-btn';
             btn.innerText = i;
 
-            const isTaken = takenNumbers.includes(String(i));
+            const isTaken = takenNumbers.includes(strI);
 
             if (isTaken) {
                 btn.classList.add('taken');
                 btn.disabled = true;
                 btn.title = 'Lakkoofsi kun kanaan dura dhuunfatameera';
             } else {
+                // Yoo duraan filatamee ture class 'selected' kaayi
+                if (selectedNumbers.includes(strI)) {
+                    btn.classList.add('selected');
+                }
                 btn.onclick = () => toggleNumberSelection(i, btn);
             }
 
             gridContainer.appendChild(btn);
         }
+        calculateTotal();
     } catch (err) {
         console.error("Error loading ticket grid:", err);
     }
@@ -249,7 +253,7 @@ function startCountdown(endDate) {
     }, 1000);
 }
 
-// 5. Ticket Submission (FIXED: SENDS SELECTED NUMBERS ARRAY)
+// 5. Ticket Submission
 async function submitTicket(e) {
     e.preventDefault();
 
@@ -257,8 +261,9 @@ async function submitTicket(e) {
     const phone = document.getElementById('phone').value;
     const screenshotInput = document.getElementById('screenshot');
 
-    if (selectedNumbers.length === 0) {
-        alert("Maaloo lakkoofsa tiketi yoo xiqqaate tokko filadhaa!");
+    // SIRREEFFAMA: Chekiin kun interface frontend irratti akka alert kennuuf
+    if (!selectedNumbers || selectedNumbers.length === 0) {
+        alert("Maaloo gara Home deebi'uudhaan lakkoofsa tiketi yoo xiqqaate tokko filadhaa!");
         return;
     }
 
@@ -285,7 +290,7 @@ async function submitTicket(e) {
         const data = await res.json();
         if (data.success) {
             alert('Tikettiin keessan milkaa\'inaan ergameera! Approval Admin eegaa.');
-            selectedNumbers = [];
+            selectedNumbers = []; // Ergamaan booda qofa qulqulleessi
             navigateTo('mytickets');
         } else {
             alert('Error: ' + data.message);
@@ -296,7 +301,7 @@ async function submitTicket(e) {
     }
 }
 
-// 6. Load My Tickets (FIXED matching logic)
+// 6. Load My Tickets
 async function loadUserTickets() {
     try {
         const res = await fetch('/api/tickets');
@@ -304,7 +309,6 @@ async function loadUserTickets() {
         const container = document.getElementById('tickets-list-container');
         if (!container) return;
 
-        // User ID safe String conversion
         const myTickets = tickets.filter(t => String(t.user_id) === String(currentUser.id));
 
         if (myTickets.length === 0) {
