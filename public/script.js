@@ -71,8 +71,25 @@ const translations = {
 };
 
 let currentLang = 'om';
+let ticketPrice = 200; // Default price
 
+// Initialize Telegram WebApp Data
+const tgApp = window.Telegram?.WebApp;
+if (tgApp) {
+    tgApp.ready();
+    tgApp.expand();
+}
+
+// Global User Info (Telegram ykn Guest)
+const currentUser = {
+    id: tgApp?.initDataUnsafe?.user?.id || 'guest_' + Date.now(),
+    username: tgApp?.initDataUnsafe?.user?.username || 'GuestUser',
+    first_name: tgApp?.initDataUnsafe?.user?.first_name || ''
+};
+
+// 1. Language Handling
 function changeLanguage(lang) {
+    if (!translations[lang]) return;
     currentLang = lang;
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
@@ -82,12 +99,28 @@ function changeLanguage(lang) {
     });
 }
 
-function navigateTo(pageId) {
+// Detect language from URL parameter (eg: ?lang=am)
+function detectLanguageFromURL() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const langParam = urlParams.get('lang');
+    if (langParam && translations[langParam]) {
+        changeLanguage(langParam);
+    }
+}
+
+// 2. Navigation
+function navigateTo(pageId, evt) {
     document.querySelectorAll('.page-view').forEach(p => p.classList.remove('active'));
-    document.getElementById(`page-${pageId}`).classList.add('active');
     
+    const targetPage = document.getElementById(`page-${pageId}`);
+    if (targetPage) {
+        targetPage.classList.add('active');
+    }
+
     document.querySelectorAll('.glass-nav button').forEach(b => b.classList.remove('active'));
-    event && event.currentTarget && event.currentTarget.classList.add('active');
+    if (evt && evt.currentTarget) {
+        evt.currentTarget.classList.add('active');
+    }
 
     if (pageId === 'mytickets') loadUserTickets();
     if (pageId === 'winners') loadWinners();
@@ -104,100 +137,197 @@ function copyText(text) {
 }
 
 function calculateTotal() {
-    const count = document.getElementById('ticket-count').value;
-    document.getElementById('total-cost').innerText = count * 200;
+    const countInput = document.getElementById('ticket-count');
+    const count = countInput ? countInput.value : 1;
+    const totalElem = document.getElementById('total-cost');
+    if (totalElem) {
+        totalElem.innerText = count * ticketPrice;
+    }
 }
 
-// Fetch Settings & Countdown
+// 3. Fetch Settings & Countdown
 async function fetchSettings() {
-    const res = await fetch('/api/settings');
-    const data = await res.json();
-    startCountdown(data.end_date);
+    try {
+        const res = await fetch('/api/settings');
+        const data = await res.json();
+        if (data.ticket_price) {
+            ticketPrice = data.ticket_price;
+            calculateTotal();
+        }
+        if (data.end_date) {
+            startCountdown(data.end_date);
+        }
+    } catch (err) {
+        console.error("Error fetching settings:", err);
+    }
 }
 
 function startCountdown(endDate) {
     const target = new Date(endDate).getTime();
-    setInterval(() => {
+    const interval = setInterval(() => {
         const now = new Date().getTime();
         const diff = target - now;
         if (diff > 0) {
-            document.getElementById('days').innerText = Math.floor(diff / (1000 * 60 * 60 * 24));
-            document.getElementById('hours').innerText = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            document.getElementById('mins').innerText = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-            document.getElementById('secs').innerText = Math.floor((diff % (1000 * 60)) / 1000);
+            const dElem = document.getElementById('days');
+            const hElem = document.getElementById('hours');
+            const mElem = document.getElementById('mins');
+            const sElem = document.getElementById('secs');
+
+            if (dElem) dElem.innerText = Math.floor(diff / (1000 * 60 * 60 * 24));
+            if (hElem) hElem.innerText = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            if (mElem) mElem.innerText = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            if (sElem) sElem.innerText = Math.floor((diff % (1000 * 60)) / 1000);
+        } else {
+            clearInterval(interval);
         }
     }, 1000);
 }
 
+// 4. Ticket Submission (FIXED FOR MULTER FILE UPLOAD)
 async function submitTicket(e) {
     e.preventDefault();
-    const payload = {
-        user_id: "user_telegram_123",
-        username: "TelegramUser",
-        fullname: document.getElementById('fullname').value,
-        phone: document.getElementById('phone').value,
-        ticket_numbers: document.getElementById('ticket-count').value,
-        payment_method: "CBE/Telebirr",
-        screenshot: document.getElementById('screenshot').value
-    };
 
-    const res = await fetch('/api/tickets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    });
-    const data = await res.json();
-    if (data.success) {
-        alert('Ticket submitted successfully! Pending approval.');
-        navigateTo('mytickets');
+    const fullname = document.getElementById('fullname').value;
+    const phone = document.getElementById('phone').value;
+    const ticketCount = document.getElementById('ticket-count').value;
+    const screenshotInput = document.getElementById('screenshot');
+
+    if (!screenshotInput.files || screenshotInput.files.length === 0) {
+        alert("Maaloo suuraa/screenshot kaffaltii upload godhaa!");
+        return;
+    }
+
+    // FormData fayyadamuu qabna file upload gochuuf
+    const formData = new FormData();
+    formData.append('user_id', currentUser.id);
+    formData.append('username', currentUser.username);
+    formData.append('fullname', fullname);
+    formData.append('phone', phone);
+    formData.append('ticket_numbers', ticketCount);
+    formData.append('payment_method', 'CBE/Telebirr');
+    formData.append('screenshot', screenshotInput.files[0]);
+
+    try {
+        const res = await fetch('/api/tickets', {
+            method: 'POST',
+            body: formData // Header Content-Type browser offiisaan set godha
+        });
+        
+        const data = await res.json();
+        if (data.success) {
+            alert('Tikettiin keessan milkaa\'inaan ergameera! Approval Admin eegaa.');
+            navigateTo('mytickets');
+        } else {
+            alert('Error: ' + data.message);
+        }
+    } catch (err) {
+        console.error("Ticket submission error:", err);
+        alert("Server error uumameera. Deebitanii yaalaa.");
     }
 }
 
+// 5. Load My Tickets
 async function loadUserTickets() {
-    const res = await fetch('/api/tickets');
-    const tickets = await res.json();
-    const container = document.getElementById('tickets-list-container');
-    container.innerHTML = tickets.map(t => `
-        <div class="glass-card" style="margin-bottom:10px;">
-            <p><strong>Ticket ID:</strong> #${t.id}</p>
-            <p><strong>Name:</strong> ${t.fullname}</p>
-            <p><strong>Count:</strong> ${t.ticket_numbers}</p>
-            <p><strong>Status:</strong> <span style="color:${t.status==='Approved'?'#22c55e':'#eab308'}">${t.status}</span></p>
-            ${t.status === 'Approved' ? '<button class="primary-btn" style="margin-top:8px;" onclick="alert(\'Digital Pass Downloaded!\')">Download Pass 🎟️</button>' : ''}
-        </div>
-    `).join('');
-}
+    try {
+        const res = await fetch('/api/tickets');
+        const tickets = await res.json();
+        const container = document.getElementById('tickets-list-container');
+        if (!container) return;
 
-async function loadWinners() {
-    const res = await fetch('/api/winners');
-    const winners = await res.json();
-    const container = document.getElementById('winners-container');
-    container.innerHTML = winners.length ? winners.map(w => `
-        <div class="glass-card">
-            <h4>🏆 ${w.winner_name}</h4>
-            <p>${w.prize_title}</p>
-        </div>
-    `).value : '<p>No winners announced yet.</p>';
-}
+        // User-id kanaan filter gochuu (yoo backend hunda deebise)
+        const myTickets = tickets.filter(t => String(t.user_id) === String(currentUser.id) || !t.user_id);
 
-function loginAdmin() {
-    const u = document.getElementById('admin-user').value;
-    const p = document.getElementById('admin-pass').value;
-    if (u === 'admin' && p === '1234') {
-        document.getElementById('admin-login-box').style.display = 'none';
-        document.getElementById('admin-dashboard-content').style.display = 'block';
-    } else {
-        alert('Invalid credentials');
+        if (myTickets.length === 0) {
+            container.innerHTML = '<p style="text-align:center; padding:20px;">Tikitii bitattan hin qabdan.</p>';
+            return;
+        }
+
+        container.innerHTML = myTickets.map(t => `
+            <div class="glass-card" style="margin-bottom:12px; padding:15px; border-radius:10px;">
+                <p><strong>Ticket ID:</strong> #${t.id}</p>
+                <p><strong>Name:</strong> ${t.fullname || 'N/A'}</p>
+                <p><strong>Count:</strong> ${t.ticket_numbers}</p>
+                <p><strong>Status:</strong> <span style="color:${t.status === 'Approved' ? '#22c55e' : '#eab308'}; font-weight:bold;">${t.status}</span></p>
+                ${t.status === 'Approved' ? '<button class="primary-btn" style="margin-top:8px;" onclick="alert(\'Digital Pass Downloaded!\')">Download Pass 🎟️</button>' : ''}
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error("Error loading tickets:", err);
     }
 }
 
-async function saveAdminSettings() {
-    alert('Settings saved successfully!');
+// 6. Load Winners (FIXED BUG)
+async function loadWinners() {
+    try {
+        const res = await fetch('/api/winners');
+        const winners = await res.json();
+        const container = document.getElementById('winners-container');
+        if (!container) return;
+
+        if (winners && winners.length > 0) {
+            container.innerHTML = winners.map(w => `
+                <div class="glass-card" style="margin-bottom:10px; padding:12px;">
+                    <h4>🏆 ${w.winner_name}</h4>
+                    <p>${w.prize_title}</p>
+                </div>
+            `).join(''); // FIXED: '.value' baddeera
+        } else {
+            container.innerHTML = '<p style="text-align:center;">Mo\'attoonni hin labamne.</p>';
+        }
+    } catch (err) {
+        console.error("Error loading winners:", err);
+    }
 }
 
-fetchSettings();
+// 7. Admin Login (API Integration)
+async function loginAdmin() {
+    const usernameInput = document.getElementById('admin-user').value;
+    const passwordInput = document.getElementById('admin-pass').value;
 
-// Admin-ni tikeetoota hunda gara Excel/CSV file-tti jijjiiree download akka godhu
+    try {
+        const res = await fetch('/api/admin/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: usernameInput, password: passwordInput })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('admin-login-box').style.display = 'none';
+            document.getElementById('admin-dashboard-content').style.display = 'block';
+        } else {
+            alert(data.message || 'Username ykn Password dogoggoraa!');
+        }
+    } catch (err) {
+        console.error("Admin login error:", err);
+    }
+}
+
+// 8. Admin Settings Save
+async function saveAdminSettings() {
+    const ticket_price = document.getElementById('setting-price')?.value;
+    const max_tickets = document.getElementById('setting-max')?.value;
+    const prize_1st = document.getElementById('setting-prize1')?.value;
+    const prize_2nd = document.getElementById('setting-prize2')?.value;
+    const end_date = document.getElementById('setting-enddate')?.value;
+
+    try {
+        const res = await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticket_price, max_tickets, prize_1st, prize_2nd, end_date })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert('Settings saved successfully!');
+            fetchSettings();
+        }
+    } catch (err) {
+        console.error("Save settings error:", err);
+    }
+}
+
+// 9. Export Tickets to CSV
 function exportToExcel() {
     fetch('/api/tickets')
         .then(res => res.json())
@@ -207,24 +337,21 @@ function exportToExcel() {
                 return;
             }
 
-            // CSV Header (Maqaawwan kolonii)
             let csvContent = "data:text/csv;charset=utf-8,ID,Full Name,Phone,Tickets Count,Payment Method,Status,Date\n";
             
-            // Data hunda row-dhaan dabaluu
             data.forEach(row => {
                 let rowData = [
                     row.id,
-                    `"${row.fullname}"`,
-                    `"${row.phone}"`,
+                    `"${row.fullname || ''}"`,
+                    `"${row.phone || ''}"`,
                     row.ticket_numbers,
-                    `"${row.payment_method}"`,
+                    `"${row.payment_method || ''}"`,
                     row.status,
-                    `"${row.created_at}"`
+                    `"${row.created_at || ''}"`
                 ];
                 csvContent += rowData.join(",") + "\n";
             });
 
-            // File-icha qopheessuu fi download gochuu
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
@@ -235,6 +362,18 @@ function exportToExcel() {
         })
         .catch(err => {
             console.error('Error exporting data:', err);
-            alert('Rakkoon uumame; irra deebi'ii yaali.');
+            alert('Rakkoon uumame; irra deebi\'ii yaali.');
         });
 }
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', () => {
+    detectLanguageFromURL();
+    fetchSettings();
+
+    // Attach Form Submit Listener
+    const checkoutForm = document.getElementById('checkout-form');
+    if (checkoutForm) {
+        checkoutForm.addEventListener('submit', submitTicket);
+    }
+});

@@ -37,7 +37,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Anti-Spam Rate Limiting
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 100,
+    max: 200, // Limiter xiqqoo ol kaafameera akka auto-save dafee request hedduu hin blokeessine
     message: { success: false, message: "Request baay'ee ergitaniirtu! Maaloo daqiiqaa 15 booda deebi'aa yaalaa." }
 });
 app.use('/api/', limiter);
@@ -71,7 +71,6 @@ app.get('/', (req, res) => {
 const TOKEN = process.env.BOT_TOKEN;
 const WEB_APP_URL = process.env.WEB_APP_URL || 'https://milki-app.onrender.com';
 
-// User Language State Store (Session temp memory)
 const userLanguages = {};
 
 if (TOKEN && TOKEN !== 'YOUR_TELEGRAM_BOT_TOKEN_HERE') {
@@ -82,7 +81,6 @@ if (TOKEN && TOKEN !== 'YOUR_TELEGRAM_BOT_TOKEN_HERE') {
             console.error(`[Telegram Bot Error]: ${error.message}`);
         });
 
-        // 1. Command /start - Afaan Filachiisa
         bot.onText(/\/start/, (msg) => {
             const chatId = msg.chat.id;
             const userName = msg.from.first_name || "User";
@@ -109,19 +107,16 @@ Welcome ${userName}! Please select your language:
             });
         });
 
-        // 2. Callback Query Handler (Button Cuqaasamu Uumama)
         bot.on('callback_query', async (query) => {
             const chatId = query.message.chat.id;
             const data = query.data;
             const queryId = query.id;
 
-            // Telegram UI spinner dhaabuuf
             await bot.answerCallbackQuery(queryId);
 
-            // AFAAN FILATAME HANDLE GOCHUU
             if (data.startsWith('lang_')) {
                 const selectedLang = data.split('_')[1];
-                userLanguages[chatId] = selectedLang; // Save user language preference
+                userLanguages[chatId] = selectedLang;
 
                 let welcomeText = "";
                 let btnAppText = "";
@@ -135,13 +130,12 @@ Welcome ${userName}! Please select your language:
                     welcomeText = "ወደ ሁንዴ ሎተሪ ሲስተም እንኳን በደህና መጡ! 🎟️\nመልካም እድል! ቲኬት ለመቁረጥ ከታች ያለውን ሊንክ ይጫኑ:";
                     btnAppText = "🎟️ ሎተሪ መተግበሪያ ይክፈቱ";
                     btnRefText = "👥 ጓደኛ ይጋብዙ";
-                } else { // English
+                } else {
                     welcomeText = "Welcome to Hunde Lottery System! 🎟️\nGood luck! Click the button below to buy your ticket:";
                     btnAppText = "🎟️ Open Lottery App";
                     btnRefText = "👥 Invite Friends";
                 }
 
-                // Gara Fuula Next/Menu'tti Dabarsuu (Afaan filatameen)
                 await bot.sendMessage(chatId, welcomeText, {
                     reply_markup: {
                         inline_keyboard: [
@@ -150,9 +144,7 @@ Welcome ${userName}! Please select your language:
                         ]
                     }
                 });
-            } 
-            // REFERRAL HANDLE GOCHUU
-            else if (data === 'referral') {
+            } else if (data === 'referral') {
                 const userLang = userLanguages[chatId] || 'om';
                 let refMsg = `🔗 Linkii affeerraa kee: https://t.me/YourBotName?start=ref_${chatId}\nHiriyoota kee afeeriitii carraa dachaaa argadhu!`;
                 
@@ -270,7 +262,7 @@ app.get('/api/settings', async (req, res) => {
     }
 });
 
-// Update Settings (FIXED WHERE CLAUSE)
+// Update Settings
 app.post('/api/settings', async (req, res) => {
     const { ticket_price, max_tickets, prize_1st, prize_2nd, end_date } = req.body;
     try {
@@ -285,9 +277,10 @@ app.post('/api/settings', async (req, res) => {
     }
 });
 
-// Get All Tickets
+// GET ALL TICKETS (FOR USER GRID & ADMIN CONTROL)
 app.get('/api/tickets', async (req, res) => {
     try {
+        // Tiketoota hunda (Pending, Approved, Reserved) akka dafee fetch godhuu danda'uuf
         const result = await pool.query("SELECT * FROM tickets ORDER BY id DESC");
         return res.json(result.rows || []);
     } catch (err) {
@@ -295,30 +288,31 @@ app.get('/api/tickets', async (req, res) => {
     }
 });
 
-// CREATE NEW TICKET PURCHASE
+// AUTO-SAVE / CREATE NEW TICKET PURCHASE (FOOYYA'AA)
 const handleTicketPurchase = async (req, res) => {
     try {
-        const { user_id, username, fullname, phone, ticket_numbers, payment_method } = req.body;
+        const { user_id, username, fullname, phone, ticket_numbers, payment_method, status } = req.body;
 
-        if (!req.file) {
-            return res.status(400).json({ success: false, message: "Screenshot-n ol hin fe'amne! Maaloo screenshot itti dabalii yaali." });
-        }
+        // Screenshot yoo hin jirre akka hin kufneef path duwwaa godha
+        const screenshotPath = req.file ? req.file.path : '';
 
-        const screenshotPath = req.file.path;
+        // Status yoo ergame (eg: 'Reserved' ykn 'Pending') isa fudhata
+        const ticketStatus = status || 'Pending';
 
         const result = await pool.query(
-            `INSERT INTO tickets (user_id, username, fullname, phone, ticket_numbers, payment_method, screenshot) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-            [user_id || '', username || '', fullname || '', phone || '', ticket_numbers || '', payment_method || '', screenshotPath]
+            `INSERT INTO tickets (user_id, username, fullname, phone, ticket_numbers, payment_method, screenshot, status) 
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+            [user_id || '', username || '', fullname || '', phone || '', ticket_numbers || '', payment_method || '', screenshotPath, ticketStatus]
         );
 
-        return res.json({ 
+        // Auto-save milkaa'eera, DB Row guutuu deebisa
+        return res.status(200).json({ 
             success: true, 
-            message: "Tikettiin keessan milkaa'inaan ergameera. Approval Admin eegaa jira!", 
-            ticketId: result.rows[0].id 
+            message: "Tikettiin milkaa'inaan saavee ta'eera!", 
+            ticket: result.rows[0] 
         });
     } catch (error) {
-        console.error("Error upload ticket:", error);
+        console.error("Error saving ticket:", error);
         return res.status(500).json({ success: false, message: "Server error uumameera: " + error.message });
     }
 };
@@ -326,18 +320,18 @@ const handleTicketPurchase = async (req, res) => {
 app.post('/api/tickets', upload.single('screenshot'), handleTicketPurchase);
 app.post('/api/buy-ticket', upload.single('screenshot'), handleTicketPurchase);
 
-// Update Ticket Status
+// UPDATE TICKET STATUS (ADMIN & AUTO APPROVAL)
 app.post('/api/tickets/status', async (req, res) => {
     const { id, status } = req.body;
     try {
-        await pool.query(`UPDATE tickets SET status = $1 WHERE id = $2`, [status, id]);
-        return res.json({ success: true, message: `Ticket #${id} status ${status}-tti jijjiirameera.` });
+        const result = await pool.query(`UPDATE tickets SET status = $1 WHERE id = $2 RETURNING *`, [status, id]);
+        return res.json({ success: true, message: `Ticket #${id} status ${status}-tti jijjiirameera.`, ticket: result.rows[0] });
     } catch (err) {
         return res.status(500).json({ success: false, error: err.message });
     }
 });
 
-// Delete Ticket (ADDED)
+// Delete Ticket
 app.delete('/api/tickets/:id', async (req, res) => {
     const { id } = req.params;
     try {
@@ -372,7 +366,7 @@ app.post('/api/winners', async (req, res) => {
     }
 });
 
-// Delete Winner (ADDED)
+// Delete Winner
 app.delete('/api/winners/:id', async (req, res) => {
     const { id } = req.params;
     try {

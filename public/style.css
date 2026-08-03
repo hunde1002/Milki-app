@@ -1,118 +1,197 @@
-const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+/* ==========================================
+   GLOBAL STYLES & VARIABLES
+   ========================================== */
+:root {
+    --primary-color: #6366f1;
+    --primary-hover: #4f46e5;
+    --bg-dark: #0f172a;
+    --bg-card: rgba(30, 41, 59, 0.7);
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --border-color: rgba(255, 255, 255, 0.1);
+    --success-color: #22c55e;
+    --warning-color: #eab308;
+    --danger-color: #ef4444;
+    --radius-lg: 16px;
+    --radius-md: 10px;
+}
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+[data-theme="light"] {
+    --bg-dark: #f1f5f9;
+    --bg-card: rgba(255, 255, 255, 0.8);
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --border-color: rgba(0, 0, 0, 0.1);
+}
 
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+}
 
-// Database Setup
-const dbFile = path.join(__dirname, 'database.sqlite');
-const db = new sqlite3.Database(dbFile, (err) => {
-    if (err) console.error('Database opening error: ', err.message);
-    else console.log('Connected to SQLite Database.');
-});
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    min-height: 100vh;
+    padding-bottom: 80px; /* Space for bottom nav */
+    transition: background-color 0.3s ease;
+}
 
-// Create Tables
-db.serialize(() => {
-    db.run(`CREATE TABLE IF NOT EXISTS settings (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        ticket_price INTEGER DEFAULT 200,
-        max_tickets INTEGER DEFAULT 50,
-        prize_1st INTEGER DEFAULT 6000,
-        prize_2nd INTEGER DEFAULT 2000,
-        end_date TEXT
-    )`);
+/* ==========================================
+   GLASSMORPHISM CARD STYLING
+   ========================================== */
+.glass-card {
+    background: var(--bg-card);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 18px;
+    margin: 15px auto;
+    width: 92%;
+    max-width: 500px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+}
 
-    db.run(`CREATE TABLE IF NOT EXISTS tickets (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id TEXT,
-        username TEXT,
-        fullname TEXT,
-        phone TEXT,
-        ticket_numbers TEXT,
-        payment_method TEXT,
-        screenshot TEXT,
-        status TEXT DEFAULT 'Pending',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
+/* ==========================================
+   PAGE VIEWS & NAVIGATION
+   ========================================== */
+.page-view {
+    display: none;
+    animation: fadeIn 0.3s ease-in-out;
+}
 
-    db.run(`CREATE TABLE IF NOT EXISTS winners (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        winner_name TEXT,
-        prize_title TEXT,
-        photo_url TEXT,
-        announced_date TEXT
-    )`);
+.page-view.active {
+    display: block;
+}
 
-    // Insert default settings if empty
-    db.get("SELECT COUNT(*) as count FROM settings", (err, row) => {
-        if (row.count === 0) {
-            const defaultDate = new Date(Date.now() + 86400000 * 3).toISOString();
-            db.run(`INSERT INTO settings (ticket_price, max_tickets, prize_1st, prize_2nd, end_date) VALUES (200, 50, 6000, 2000, ?)`, [defaultDate]);
-        }
-    });
-});
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
 
-// API Routes
-app.get('/api/settings', (req, res) => {
-    db.get("SELECT * FROM settings ORDER BY id DESC LIMIT 1", (err, row) => {
-        if (err) res.status(500).json({ error: err.message });
-        else res.json(row);
-    });
-});
+/* Bottom Glass Navigation Bar */
+.glass-nav {
+    position: fixed;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 92%;
+    max-width: 450px;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(15px);
+    border: 1px solid var(--border-color);
+    border-radius: 30px;
+    display: flex;
+    justify-content: space-around;
+    padding: 8px 5px;
+    z-index: 1000;
+}
 
-app.post('/api/settings', (req, res) => {
-    const { ticket_price, max_tickets, prize_1st, prize_2nd, end_date } = req.body;
-    db.run(`UPDATE settings SET ticket_price = ?, max_tickets = ?, prize_1st = ?, prize_2nd = ?, end_date = ? WHERE id = 1`,
-        [ticket_price, max_tickets, prize_1st, prize_2nd, end_date], function(err) {
-            if (err) res.status(500).json({ error: err.message });
-            else res.json({ success: true });
-        });
-});
+.glass-nav button {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 8px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
 
-app.get('/api/tickets', (req, res) => {
-    db.all("SELECT * FROM tickets ORDER BY id DESC", (err, rows) => {
-        if (err) res.status(500).json({ error: err.message });
-        else res.json(rows);
-    });
-});
+.glass-nav button.active, .glass-nav button:hover {
+    color: var(--text-main);
+    background: var(--primary-color);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
 
-app.post('/api/tickets', (req, res) => {
-    const { user_id, username, fullname, phone, ticket_numbers, payment_method, screenshot } = req.body;
-    db.run(`INSERT INTO tickets (user_id, username, fullname, phone, ticket_numbers, payment_method, screenshot) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [user_id, username, fullname, phone, ticket_numbers, payment_method, screenshot], function(err) {
-            if (err) res.status(500).json({ error: err.message });
-            else res.json({ success: true, ticketId: this.lastID });
-        });
-});
+/* ==========================================
+   BUTTONS & INPUTS
+   ========================================== */
+.primary-btn {
+    width: 100%;
+    background: linear-gradient(135deg, var(--primary-color), #818cf8);
+    color: white;
+    border: none;
+    padding: 14px;
+    border-radius: var(--radius-md);
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
 
-app.post('/api/tickets/status', (req, res) => {
-    const { id, status } = req.body;
-    db.run(`UPDATE tickets SET status = ? WHERE id = ?`, [status, id], function(err) {
-        if (err) res.status(500).json({ error: err.message });
-        else res.json({ success: true });
-    });
-});
+.primary-btn:active {
+    transform: scale(0.98);
+}
 
-app.get('/api/winners', (req, res) => {
-    db.all("SELECT * FROM winners ORDER BY id DESC", (err, rows) => {
-        if (err) res.status(500).json({ error: err.message });
-        else res.json(rows);
-    });
-});
+.input-field, select {
+    width: 100%;
+    padding: 12px 15px;
+    margin: 8px 0 16px 0;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-main);
+    font-size: 0.95rem;
+    outline: none;
+}
 
-app.post('/api/winners', (req, res) => {
-    const { winner_name, prize_title, photo_url } = req.body;
-    db.run(`INSERT INTO winners (winner_name, prize_title, photo_url, announced_date) VALUES (?, ?, ?, datetime('now'))`,
-        [winner_name, prize_title, photo_url], function(err) {
-            if (err) res.status(500).json({ error: err.message });
-            else res.json({ success: true });
-        });
-});
+.input-field:focus {
+    border-color: var(--primary-color);
+}
 
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-});
+/* ==========================================
+   COUNTDOWN TIMER & GRID
+   ========================================== */
+.timer-container {
+    display: flex;
+    justify-content: space-around;
+    text-align: center;
+    margin: 15px 0;
+}
+
+.timer-box {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 10px;
+    border-radius: var(--radius-md);
+    min-width: 60px;
+}
+
+.timer-box span {
+    display: block;
+    font-size: 1.4rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+/* Tickets List Grid */
+#tickets-grid, #tickets-list-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+}
+
+.badge-pending {
+    color: var(--warning-color);
+    background: rgba(234, 179, 8, 0.15);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+}
+
+.badge-approved {
+    color: var(--success-color);
+    background: rgba(34, 197, 94, 0.15);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+}
