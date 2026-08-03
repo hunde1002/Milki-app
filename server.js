@@ -309,13 +309,20 @@ app.get('/api/booked-numbers', async (req, res) => {
     }
 });
 
-// AUTO-SAVE / CREATE NEW TICKET PURCHASE (STEP 1 - FOOYYA'AA FI DUPLICATE PREVENTING)
+// CREATE NEW TICKET PURCHASE (CLEAN & FIXED)
 const handleTicketPurchase = async (req, res) => {
     try {
         const { user_id, username, fullname, phone, ticket_numbers, payment_method, status } = req.body;
 
-        if (!ticket_numbers) {
-            return res.status(400).json({ success: false, message: "Lakkoofsi tiketti filatamuu qaba!" });
+        console.log("--- NEW TICKET REQUEST RECEIVED ---");
+        console.log("REQ BODY:", req.body);
+
+        // Check if ticket_numbers exists and is not empty
+        if (!ticket_numbers || typeof ticket_numbers !== 'string' || ticket_numbers.trim() === '') {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Lakkoofsi tiketti filatamuu qaba!" 
+            });
         }
 
         // 1. Lakkoofsi sun kanaan dura qabamuu/murtamuusaa DB irraa mirkaneessuu
@@ -329,7 +336,15 @@ const handleTicketPurchase = async (req, res) => {
             }
         });
 
-        const requestedNumbers = ticket_numbers.split(',').map(n => n.trim());
+        const requestedNumbers = ticket_numbers.split(',').map(n => n.trim()).filter(n => n !== '');
+        
+        if (requestedNumbers.length === 0) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Lakkoofsi tiketti sirrii miti!" 
+            });
+        }
+
         const isAlreadyTaken = requestedNumbers.some(num => takenNumbers.includes(num));
 
         if (isAlreadyTaken) {
@@ -347,7 +362,7 @@ const handleTicketPurchase = async (req, res) => {
         const result = await pool.query(
             `INSERT INTO tickets (user_id, username, fullname, phone, ticket_numbers, payment_method, screenshot, status) 
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-            [user_id || '', username || '', fullname || '', phone || '', ticket_numbers || '', payment_method || '', screenshotPath, ticketStatus]
+            [user_id || '', username || '', fullname || '', phone || '', ticket_numbers.trim(), payment_method || '', screenshotPath, ticketStatus]
         );
 
         return res.status(200).json({ 
